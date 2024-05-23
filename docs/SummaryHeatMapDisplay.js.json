@@ -1,0 +1,2044 @@
+{
+  "filename": "SummaryHeatMapDisplay.js",
+  "namespace": "NgChm.SUM",
+  "description": [
+    "This module is responsible for managing and rendering the summary heatmap display within the NgChm application. It handles the initialization, drawing, and updating of the summary heatmap, including the management of WebGL contexts for rendering, handling user interactions, and updating the display based on data changes. The module also manages the drawing of classification bars, selection marks, and top items on the summary heatmap."
+  ],
+  "declares_functions_in": [
+    "SUM"
+  ],
+  "interacts_with": [
+    "NgChm.MAPREP",
+    "NgChm.MMGR",
+    "NgChm.CMM",
+    "NgChm.SUMDDR",
+    "NgChm.UTIL",
+    "NgChm.DRAW",
+    "NgChm.DVW",
+    "NgChm.Pane",
+    "NgChm.SRCHSTATE"
+  ],
+  "classes": [],
+  "member_variables": [
+    {
+      "name": "SUM.avgValue",
+      "description": "Average value for each layer."
+    },
+    {
+      "name": "SUM.boxCanvas",
+      "description": "Secondary Heat Map Selection Box Canvas."
+    },
+    {
+      "name": "SUM.cCCanvas",
+      "description": "Column Class Bar Canvas."
+    },
+    {
+      "name": "SUM.canvas",
+      "description": "Primary Heat Map Canvas."
+    },
+    {
+      "name": "SUM.ccGlManager",
+      "description": "WebGL manager for the column covariate bar canvas."
+    },
+    {
+      "name": "SUM.chmElement",
+      "description": "Div containing summary heatmap."
+    },
+    {
+      "name": "SUM.colClassBarHeight",
+      "description": "Height of the column classification bar."
+    },
+    {
+      "name": "SUM.colClassPadding",
+      "description": "Space between column classification bars."
+    },
+    {
+      "name": "SUM.colClassScale",
+      "description": "Scale factor for column classification bars."
+    },
+    {
+      "name": "SUM.colDendro",
+      "description": "Column dendrogram object."
+    },
+    {
+      "name": "SUM.colTopItemPosns",
+      "description": "Positions of top items in the column."
+    },
+    {
+      "name": "SUM.colTopItems",
+      "description": "Top items in the column."
+    },
+    {
+      "name": "SUM.colTopItemsWidth",
+      "description": "Width of the top items in the column."
+    },
+    {
+      "name": "SUM.eventTimer",
+      "description": "Timer used to delay draw updates."
+    },
+    {
+      "name": "SUM.flagDrawClassBarLabels",
+      "description": "Flag indicating whether to draw class bar labels."
+    },
+    {
+      "name": "SUM.heightPct",
+      "description": "Percentage of vertical space the column dendrogram and map should take up on the summary heatmap div."
+    },
+    {
+      "name": "SUM.heightScale",
+      "description": "Scale factor for the height of the heatmap."
+    },
+    {
+      "name": "SUM.mapGlManager",
+      "description": "WebGL manager for the primary heat map canvas."
+    },
+    {
+      "name": "SUM.matrixHeight",
+      "description": "Height of the data matrix."
+    },
+    {
+      "name": "SUM.matrixWidth",
+      "description": "Width of the data matrix."
+    },
+    {
+      "name": "SUM.minDimensionSize",
+      "description": "Minimum size the data matrix canvas can be."
+    },
+    {
+      "name": "SUM.paddingHeight",
+      "description": "Padding height for the heatmap."
+    },
+    {
+      "name": "SUM.rCCanvas",
+      "description": "Row Class Bar Canvas."
+    },
+    {
+      "name": "SUM.rcGlManager",
+      "description": "WebGL manager for the row covariate bar canvas."
+    },
+    {
+      "name": "SUM.rowClassBarWidth",
+      "description": "Width of the row classification bar."
+    },
+    {
+      "name": "SUM.rowClassPadding",
+      "description": "Space between row classification bars."
+    },
+    {
+      "name": "SUM.rowClassScale",
+      "description": "Scale factor for row classification bars."
+    },
+    {
+      "name": "SUM.rowDendro",
+      "description": "Row dendrogram object."
+    },
+    {
+      "name": "SUM.rowTopItemPosns",
+      "description": "Positions of top items in the row."
+    },
+    {
+      "name": "SUM.rowTopItems",
+      "description": "Top items in the row."
+    },
+    {
+      "name": "SUM.rowTopItemsHeight",
+      "description": "Height of the top items in the row."
+    },
+    {
+      "name": "SUM.summaryHeatMapCache",
+      "description": "Cached summary heat maps for each layer."
+    },
+    {
+      "name": "SUM.summaryHeatMapValidator",
+      "description": "Determines if the summary heat map for a layer needs to be rendered again."
+    },
+    {
+      "name": "SUM.texCc",
+      "description": "Texture for the column classification bar."
+    },
+    {
+      "name": "SUM.texRc",
+      "description": "Texture for the row classification bar."
+    },
+    {
+      "name": "SUM.totalHeight",
+      "description": "Total height of the summary heatmap."
+    },
+    {
+      "name": "SUM.totalWidth",
+      "description": "Total width of the summary heatmap."
+    },
+    {
+      "name": "SUM.widthPct",
+      "description": "Percentage of horizontal space the row dendrogram and map should take up on the summary heatmap div."
+    },
+    {
+      "name": "SUM.widthScale",
+      "description": "Scale factor for the width of the heatmap."
+    }
+  ],
+  "global_variables": [],
+  "exports": [
+    "SUM.initSummaryDisplay",
+    "SUM.processSummaryMapUpdate",
+    "SUM.initSummaryData",
+    "SUM.reinitSummaryData",
+    "SUM.redrawSummaryPanel",
+    "SUM.setMinimumSummaryWidth",
+    "SUM.calcTotalSize",
+    "SUM.setSelectionDivSize",
+    "SUM.initHeatMapGl",
+    "SUM.initRowClassGl",
+    "SUM.initColClassGl",
+    "SUM.createSummaryGlManager",
+    "SUM.flushDrawingCache",
+    "SUM.buildSummaryTexture",
+    "SUM.drawHeatMap",
+    "SUM.renderHeatMapToRenderBuffer",
+    "SUM.buildRowClassTexture",
+    "SUM.buildRowCovariateRenderBuffer",
+    "SUM.drawRowClassBars",
+    "SUM.buildColClassTexture",
+    "SUM.buildColCovariateRenderBuffer",
+    "SUM.drawColClassBars",
+    "SUM.getCanvasX",
+    "SUM.getCanvasY",
+    "SUM.canvasToMatrixRow",
+    "SUM.canvasToMatrixCol",
+    "SUM.getCanvasYFromRow",
+    "SUM.getCanvasXFromCol",
+    "SUM.resetBoxCanvas",
+    "SUM.drawLeftCanvasBox",
+    "SUM.getScaledHeight",
+    "SUM.drawColorPlotColClassBar",
+    "SUM.drawScatterBarPlotColClassBar",
+    "SUM.drawColClassBarLegend",
+    "SUM.removeRowClassBarLabels",
+    "SUM.drawRowClassBarLabels",
+    "SUM.removeColClassBarLabels",
+    "SUM.drawColClassBarLabels",
+    "SUM.drawColClassBarLabel",
+    "SUM.setLabelDivElement",
+    "SUM.drawColClassBarLegends",
+    "SUM.drawColorPlotRowClassBar",
+    "SUM.drawScatterBarPlotRowClassBar",
+    "SUM.drawRowClassBarLegends",
+    "SUM.drawRowClassBarLegend",
+    "SUM.setLegendDivElement",
+    "SUM.buildScatterBarPlotMatrix",
+    "SUM.getSummaryCovariateBarHeights",
+    "SUM.calculateSummaryTotalClassBarHeight",
+    "SUM.isVisible",
+    "SUM.redrawSummaryPane",
+    "SUM.initSummarySize",
+    "SUM.calcSummaryLayout",
+    "SUM.redrawSelectionMarks",
+    "SUM.drawSelectionMarks",
+    "SUM.drawAxisSelectionMarks",
+    "SUM.drawMissingRowClassBarsMark",
+    "SUM.drawMissingColClassBarsMark",
+    "SUM.clearSelectionMarks",
+    "SUM.clearAxisSelectionMarks",
+    "SUM.clearRowSelectionMarks",
+    "SUM.clearColSelectionMarks",
+    "SUM.clearTopItems",
+    "SUM.setTopItemsSize",
+    "SUM.drawTopItems",
+    "SUM.getTopItemLabelIndices"
+  ],
+  "functions": [
+    {
+      "name": "initSummaryDisplay",
+      "namespace": "SUM",
+      "signature": "SUM.initSummaryDisplay()",
+      "description": "Initializes the summary display by setting up references to various canvas elements in the DOM. This function should be called after the DOM elements for the summary panel have loaded and before other summary panel initializations.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Sets SUM.canvas to the element with id 'summary_canvas'",
+        "Sets SUM.boxCanvas to the element with id 'summary_box_canvas'",
+        "Sets SUM.rCCanvas to the element with id 'row_class_canvas'",
+        "Sets SUM.cCCanvas to the element with id 'col_class_canvas'"
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "processSummaryMapUpdate",
+      "namespace": "SUM",
+      "signature": "SUM.processSummaryMapUpdate(event, tile)",
+      "description": "Callback function that is notified every time there is an update to the heat map. This function handles the drawing of the summary heat map when new data is received.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "String",
+          "description": "The event type that triggered the update. Expected to be MMGR.Event_NEWDATA."
+        },
+        {
+          "name": "tile",
+          "type": "Tile",
+          "description": "The tile object containing information about the map tile being updated. Expected to have a 'level' property."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Clears and resets the SUM.eventTimer.",
+        "Calls SUM.flushDrawingCache(tile) to clear the drawing cache for the tile.",
+        "Sets a timeout to call SUM.buildSummaryTexture after 200 milliseconds."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "initSummaryData",
+      "namespace": "SUM",
+      "signature": "SUM.initSummaryData(callbacks)",
+      "description": "Initializes heatmap summary data that is independent of the presence of a summary panel. This function is called once the heatmap data has been loaded, but before creating any view panels. It sets up various callbacks and initializes summary dendrograms and other related data.",
+      "parameters": [
+        {
+          "name": "callbacks",
+          "type": "object",
+          "description": "An object containing callback functions used for various operations such as clearing and setting selected regions, handling search results, and calculating dendrogram sizes."
+        }
+      ],
+      "side_effects": [
+        "Initializes `SUM.colDendro` and `SUM.rowDendro` if they are not already defined.",
+        "Sets `SUM.colTopItems` and `SUM.rowTopItems` based on the heatmap configuration.",
+        "Sets `SUM.matrixWidth` and `SUM.matrixHeight` based on the heatmap dimensions.",
+        "Adjusts `SUM.widthScale` and `SUM.heightScale` if the matrix dimensions are smaller than the minimum size.",
+        "Calls `SUM.calcTotalSize()` to calculate the total size of the summary."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "reinitSummaryData",
+      "namespace": "SUM",
+      "signature": "SUM.reinitSummaryData()",
+      "description": "Reinitializes the summary data for the heat map, including dendrograms and top items, and recalculates the matrix dimensions and scaling factors.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Initializes SUM.colDendro and SUM.rowDendro if they are not already initialized.",
+        "Updates SUM.colTopItems and SUM.rowTopItems with sorted top items from the heat map configuration.",
+        "Updates SUM.matrixWidth and SUM.matrixHeight with the number of columns and rows at the summary level.",
+        "Adjusts SUM.widthScale and SUM.heightScale based on the matrix dimensions.",
+        "Calls SUM.calcTotalSize() to recalculate the total size."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "redrawSummaryPanel",
+      "namespace": "SUM",
+      "signature": "SUM.redrawSummaryPanel()",
+      "description": "Redraws the summary panel by reinitializing summary data, recalculating layout, and updating various graphical elements such as classification bars, textures, and dendrograms.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the width of SUM.rCCanvas.",
+        "Modifies the height of SUM.cCCanvas.",
+        "Calls multiple functions to update the graphical elements of the summary panel."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setMinimumSummaryWidth",
+      "namespace": "SUM",
+      "signature": "SUM.setMinimumSummaryWidth(minSumWidth)",
+      "description": "This function checks if the proposed summary width will allow for covariate bars, dendrogram, and some portion of the summary map. If not, the minimum summary size is reset to a larger size and the configuration for summary minimum width is updated. The minimum width is also set for the summary chm so that the divider bar cannot be dragged further to the left.",
+      "parameters": [
+        {
+          "name": "minSumWidth",
+          "type": "number",
+          "description": "The minimum summary width in pixels."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the width of the summary chm element.",
+        "Updates the configuration for summary minimum width."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The final summary width percentage."
+      }
+    },
+    {
+      "name": "calcTotalSize",
+      "namespace": "SUM",
+      "signature": "SUM.calcTotalSize()",
+      "description": "Calculates and sets the total height and width of the summary heat map based on the matrix dimensions and scaling factors. This is used to set the canvas, WebGL texture, and viewport size.",
+      "parameters": [],
+      "side_effects": [
+        "Sets SUM.totalHeight based on SUM.matrixHeight and SUM.heightScale.",
+        "Sets SUM.totalWidth based on SUM.matrixWidth and SUM.widthScale."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setSelectionDivSize",
+      "namespace": "SUM",
+      "signature": "SUM.setSelectionDivSize(width, height)",
+      "description": "Resizes and repositions various canvas elements used for PDF generation based on the provided width and height parameters.",
+      "parameters": [
+        {
+          "name": "width",
+          "type": "number",
+          "description": "The width to set for the canvas elements."
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The height to set for the canvas elements."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the styles and dimensions of canvas elements with IDs 'summary_col_select_canvas', 'summary_row_select_canvas', 'summary_col_top_items_canvas', and 'summary_row_top_items_canvas'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "initHeatMapGl",
+      "namespace": "SUM",
+      "signature": "SUM.initHeatMapGl()",
+      "description": "Initializes the WebGL context for the heatmap canvas in the summary panel. If the context manager does not exist, it creates one. It also checks if re-initialization is required and performs it if necessary.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Creates the WebGL context manager if it does not exist.",
+        "Checks and potentially re-initializes the WebGL context."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "The WebGL context manager for the heatmap canvas."
+      }
+    },
+    {
+      "name": "initRowClassGl",
+      "namespace": "SUM",
+      "signature": "SUM.initRowClassGl()",
+      "description": "Initializes the WebGL context for the Row Class Bar Canvas. If the WebGL manager is not already created, it creates a new one and then checks the initialization of the WebGL context.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Creates a new WebGL manager if it does not already exist.",
+        "Initializes the WebGL context for the Row Class Bar Canvas."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The WebGL manager instance after checking the initialization of the WebGL context."
+      }
+    },
+    {
+      "name": "initColClassGl",
+      "namespace": "SUM",
+      "signature": "SUM.initColClassGl()",
+      "description": "Initializes the WebGL context for the Column Class Bar Canvas and returns the GL manager instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Initializes SUM.ccGlManager if it is not already initialized."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The GL manager instance after checking the initialization of the summary GL context."
+      }
+    },
+    {
+      "name": "createSummaryGlManager",
+      "namespace": "None",
+      "signature": "createSummaryGlManager(canvas, onRestore)",
+      "description": "Creates a GL manager that uses the summary map vertex and fragment shaders.",
+      "parameters": [
+        {
+          "name": "canvas",
+          "type": "HTMLCanvasElement",
+          "description": "The canvas element to be used for WebGL rendering."
+        },
+        {
+          "name": "onRestore",
+          "type": "function",
+          "description": "Callback function to be called when the WebGL context is restored."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "An instance of the GL manager created by DRAW.GL.createGlManager."
+      }
+    },
+    {
+      "name": "getVertexShader",
+      "namespace": "None",
+      "signature": "getVertexShader(gl)",
+      "description": "Creates and compiles a vertex shader for summary heat maps.",
+      "parameters": [
+        {
+          "name": "gl",
+          "type": "WebGLRenderingContext",
+          "description": "The WebGL rendering context used to create and compile the shader."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "WebGLShader",
+        "description": "The compiled vertex shader."
+      }
+    },
+    {
+      "name": "getFragmentShader",
+      "namespace": "None",
+      "signature": "getFragmentShader(gl)",
+      "description": "Creates and compiles a fragment shader for summary heat maps using the provided WebGL context.",
+      "parameters": [
+        {
+          "name": "gl",
+          "type": "WebGLRenderingContext",
+          "description": "The WebGL context used to create and compile the fragment shader."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "WebGLShader",
+        "description": "The compiled fragment shader."
+      }
+    },
+    {
+      "name": "initSummaryGlContext",
+      "namespace": "None",
+      "signature": "initSummaryGlContext(manager, ctx, program)",
+      "description": "Re-initializes a summary GL context by setting the viewport, clearing the color buffer, and setting the clip region.",
+      "parameters": [
+        {
+          "name": "manager",
+          "type": "object",
+          "description": "An object that manages the GL context and contains scaling information."
+        },
+        {
+          "name": "ctx",
+          "type": "object",
+          "description": "The WebGL rendering context."
+        },
+        {
+          "name": "program",
+          "type": "object",
+          "description": "The WebGL program to be used. (Currently not used in the function)"
+        }
+      ],
+      "side_effects": [
+        "Modifies the viewport dimensions based on the manager's width and height scale.",
+        "Clears the color buffer of the WebGL context.",
+        "Sets the clip region using the manager's setClipRegion method."
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true after successfully re-initializing the GL context."
+      }
+    },
+    {
+      "name": "flushDrawingCache",
+      "namespace": "SUM",
+      "signature": "SUM.flushDrawingCache(tile)",
+      "description": "This function is called when a new summary tile is received. It marks the summary heatmap for the tile's layer so that it will be redrawn when buildSummaryTexture is called next.",
+      "parameters": [
+        {
+          "name": "tile",
+          "type": "object",
+          "description": "An object representing the summary tile, which contains information about the layer."
+        }
+      ],
+      "side_effects": [
+        "Marks the summary heatmap for the tile's layer to be redrawn by setting SUM.summaryHeatMapValidator[tile.layer] to an empty string."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildSummaryTexture",
+      "namespace": "SUM",
+      "signature": "SUM.buildSummaryTexture()",
+      "description": "Creates a summary heat map for the current data layer and displays it. It utilizes cached render buffers if available, otherwise, it creates a new render buffer. The function also validates the summary properties and renders the heat map if necessary.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies SUM.summaryHeatMapCache with new render buffers.",
+        "Modifies SUM.summaryHeatMapValidator with new validation strings.",
+        "Sets SUM.eventTimer to 0."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawHeatMap",
+      "namespace": "SUM",
+      "signature": "SUM.drawHeatMap()",
+      "description": "Redisplays the summary heat map for the current data layer by fetching the current data layer from the heat map and rendering it from the cache if available.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the rendering buffer by calling drawHeatMapRenderBuffer with cached data."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "renderHeatMapToRenderBuffer",
+      "namespace": "None",
+      "signature": "renderHeatMapToRenderBuffer(widthScale, heightScale)",
+      "description": "Generates a heat map and renders it to a buffer with specified width and height scales.",
+      "parameters": [
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scale factor for the width of the heat map."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of the heat map."
+        }
+      ],
+      "side_effects": [
+        "Creates a render buffer using the DRAW.createRenderBuffer function."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "The render buffer containing the heat map."
+      }
+    },
+    {
+      "name": "renderSummaryHeatMap",
+      "namespace": "None",
+      "signature": "renderSummaryHeatMap(renderBuffer, widthScale, heightScale)",
+      "description": "Renders the Summary Heat Map for the current data layer into the specified renderBuffer.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "RenderBuffer",
+          "description": "The buffer where the heat map will be rendered."
+        },
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scale factor for the width of each cell in the heat map."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of each cell in the heat map."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the pixels property of the renderBuffer object.",
+        "Updates the SUM.avgValue for the current data layer."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "console.error",
+          "description": "Logs an error if the rendering process does not end properly."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawHeatMapRenderBuffer",
+      "namespace": "None",
+      "signature": "drawHeatMapRenderBuffer(renderBuffer)",
+      "description": "Draws the summary map render in the provided renderBuffer to the summary map canvas using WebGL.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "RenderBuffer",
+          "description": "The buffer containing the render data to be drawn on the summary map canvas."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the WebGL texture and draws it on the summary map canvas."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildRowClassTexture",
+      "namespace": "SUM",
+      "signature": "SUM.buildRowClassTexture()",
+      "description": "Draws Row Classification bars into the WebGL texture array (\"dataBuffer\"). This function handles the creation and rendering of row classification bars, including managing hidden covariates and updating the DOM with necessary labels.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies SUM.texRc with the result of buildRowCovariateRenderBuffer.",
+        "Removes labels with the ID 'missingSumRowClassBars' using DVW.removeLabels.",
+        "Potentially adds new label divs to the DOM if hidden covariates are present.",
+        "Calls SUM.drawRowClassBars to render the row classification bars."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildRowCovariateRenderBuffer",
+      "namespace": "None",
+      "signature": "buildRowCovariateRenderBuffer(widthScale, heightScale)",
+      "description": "Generates a render buffer for row covariates in a heatmap visualization, scaling the dimensions according to the provided width and height scales.",
+      "parameters": [
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scale factor for the width of the render buffer."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of the render buffer."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "RenderBuffer",
+        "description": "A render buffer object containing the pixel data for the row covariates."
+      }
+    },
+    {
+      "name": "drawRowClassBars",
+      "namespace": "SUM",
+      "signature": "SUM.drawRowClassBars()",
+      "description": "This function draws row class bars using WebGL if the texture and initialization are successful.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the WebGL texture and draws it using the rcGlManager."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildColClassTexture",
+      "namespace": "SUM",
+      "signature": "SUM.buildColClassTexture()",
+      "description": "Draws Column Classification bars into the WebGL texture array (\"dataBuffer\"). It handles the rendering of column covariate bars and manages the display of labels for missing column classifications.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies SUM.texCc by creating a render buffer for column covariates.",
+        "Removes existing labels with the ID 'missingSumColClassBars'.",
+        "Adds new label divs if there are hidden covariates in the column.",
+        "Calls SUM.drawColClassBars() to draw the classification bars."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildColCovariateRenderBuffer",
+      "namespace": "SUM",
+      "signature": "SUM.buildColCovariateRenderBuffer(widthScale, heightScale)",
+      "description": "Generates a render buffer for column covariates in a heatmap, scaling the width and height according to the provided scales. The function fills the buffer with color data based on the classification data and color maps.",
+      "parameters": [
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scale factor for the width of the render buffer."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of the render buffer."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "RenderBuffer",
+        "description": "A render buffer object filled with the scaled column covariate data."
+      }
+    },
+    {
+      "name": "drawColClassBars",
+      "namespace": "SUM",
+      "signature": "SUM.drawColClassBars()",
+      "description": "This function uses WebGL to draw the Column Class Bars. It initializes the WebGL context if necessary and sets the texture from the render buffer before drawing the texture.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the WebGL context by setting the texture from the render buffer and drawing the texture."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getCanvasX",
+      "namespace": "SUM",
+      "signature": "SUM.getCanvasX(offsetX)",
+      "description": "This function translates a click position on a resized canvas back to the original (non-scaled) canvas position.",
+      "parameters": [
+        {
+          "name": "offsetX",
+          "type": "number",
+          "description": "The X-coordinate of the click position on the resized canvas."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The X-coordinate of the click position on the original (non-scaled) canvas."
+      }
+    },
+    {
+      "name": "getCanvasY",
+      "namespace": "SUM",
+      "signature": "SUM.getCanvasY(offsetY)",
+      "description": "Converts a Y-coordinate offset from the client area of the canvas to the corresponding Y-coordinate in the canvas's coordinate system.",
+      "parameters": [
+        {
+          "name": "offsetY",
+          "type": "number",
+          "description": "The Y-coordinate offset in the client area of the canvas."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The corresponding Y-coordinate in the canvas's coordinate system."
+      }
+    },
+    {
+      "name": "canvasToMatrixRow",
+      "namespace": "SUM",
+      "signature": "SUM.canvasToMatrixRow(y)",
+      "description": "Converts a y-coordinate from the canvas to the corresponding row in the matrix by scaling it according to the height scale.",
+      "parameters": [
+        {
+          "name": "y",
+          "type": "number",
+          "description": "The y-coordinate on the canvas."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The corresponding row in the matrix."
+      }
+    },
+    {
+      "name": "canvasToMatrixCol",
+      "namespace": "SUM",
+      "signature": "SUM.canvasToMatrixCol(x)",
+      "description": "Converts a canvas x-coordinate to a corresponding matrix column index based on the width scale.",
+      "parameters": [
+        {
+          "name": "x",
+          "type": "number",
+          "description": "The x-coordinate on the canvas to be converted."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The corresponding matrix column index."
+      }
+    },
+    {
+      "name": "getCanvasYFromRow",
+      "namespace": "SUM",
+      "signature": "SUM.getCanvasYFromRow(row)",
+      "description": "Given a matrix row, this function returns the corresponding canvas Y position by adding the row value to the column class bar height.",
+      "parameters": [
+        {
+          "name": "row",
+          "type": "number",
+          "description": "The row index in the matrix."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The Y position on the canvas corresponding to the given row."
+      }
+    },
+    {
+      "name": "getCanvasXFromCol",
+      "namespace": "SUM",
+      "signature": "SUM.getCanvasXFromCol(col)",
+      "description": "Calculates the X-coordinate on the canvas based on the given column index and the width of the row class bar.",
+      "parameters": [
+        {
+          "name": "col",
+          "type": "number",
+          "description": "The column index for which the X-coordinate is to be calculated."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The X-coordinate on the canvas corresponding to the given column index."
+      }
+    },
+    {
+      "name": "resetBoxCanvas",
+      "namespace": "SUM",
+      "signature": "SUM.resetBoxCanvas()",
+      "description": "This function resets the summary box canvas by clearing it and drawing borders. It is separated from the drawLeftCanvas function to facilitate the use of the canvas with borders in printing PDFs where only the summary view is selected.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Clears the existing content on the summary box canvas.",
+        "Draws borders on the summary box canvas.",
+        "Modifies the appearance of the canvas based on the heat map and primary map modes."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "CanvasRenderingContext2D",
+        "description": "The 2D rendering context for the drawing surface of the summary box canvas."
+      }
+    },
+    {
+      "name": "drawLeftCanvasBox",
+      "namespace": "SUM",
+      "signature": "SUM.drawLeftCanvasBox()",
+      "description": "This function draws the view box on the summary pane whenever the position in the detail pane has changed. It converts coordinates from the detail pane to the summary pane, calculates the new box position, and redraws the summary pane. It also draws the black border around the summary heat map and gray panels that bracket sub-dendro selections when in sub-dendro mode.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the canvas element to draw the view box and borders."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getScaledHeight",
+      "namespace": "SUM",
+      "signature": "SUM.getScaledHeight(height, axis)",
+      "defined_section": "CLASSBAR FUNCTIONS",
+      "description": "Calculates and returns the scaled height based on the provided height and axis. The function ensures that the height is at least a minimum value plus padding, which varies depending on whether the axis is 'row' or 'column'.",
+      "parameters": [
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The original height value to be scaled."
+        },
+        {
+          "name": "axis",
+          "type": "string",
+          "description": "The axis for which the height is being scaled. It can be either 'row' or 'column'."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The scaled height value, ensuring it is at least the minimum value plus padding."
+      }
+    },
+    {
+      "name": "drawColorPlotColClassBar",
+      "namespace": "None",
+      "signature": "drawColorPlotColClassBar(renderBuffer, pos, height, classBarValues, classBarLength, colorMap, widthScale, heightScale)",
+      "description": "Draws a color plot column class bar by creating a row of color values based on classification and copying it into the render buffer multiple times.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "object",
+          "description": "The buffer where the color plot will be rendered."
+        },
+        {
+          "name": "pos",
+          "type": "number",
+          "description": "The starting position in the render buffer."
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The height of the class bar."
+        },
+        {
+          "name": "classBarValues",
+          "type": "array",
+          "description": "Array of classification values for the class bar."
+        },
+        {
+          "name": "classBarLength",
+          "type": "number",
+          "description": "The length of the class bar."
+        },
+        {
+          "name": "colorMap",
+          "type": "object",
+          "description": "Object that provides color mappings for classifications."
+        },
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scaling factor for the width of the class bar."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scaling factor for the height of the class bar."
+        }
+      ],
+      "side_effects": [
+        "Modifies the renderBuffer by writing the color plot data into it."
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The updated position in the render buffer after drawing the class bar."
+      }
+    },
+    {
+      "name": "drawScatterBarPlotColClassBar",
+      "namespace": "SUM",
+      "signature": "SUM.drawScatterBarPlotColClassBar(renderBuffer, pos, height, barValues, covariateBar, widthScale, heightScale)",
+      "description": "Copy a column scatter/bar plot for the specified covariateBar into renderBuffer. The copied covariateBar will have one entry for each value in the barValues array. Each entry will be widthScale pixels wide and height*heightScale pixels high. The function returns the next writing position within renderBuffer.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "object",
+          "description": "The buffer where the scatter/bar plot will be rendered. It must have a 'pixels' property to store color data."
+        },
+        {
+          "name": "pos",
+          "type": "number",
+          "description": "The starting position within renderBuffer at which to write the covariateBar."
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The height of the bar plot."
+        },
+        {
+          "name": "barValues",
+          "type": "array",
+          "description": "Array of values representing the bar plot entries."
+        },
+        {
+          "name": "covariateBar",
+          "type": "object",
+          "description": "Object containing methods to get scatter/bar plot colors."
+        },
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The width scale factor for each bar plot entry."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The height scale factor for the bar plot."
+        }
+      ],
+      "side_effects": [
+        "Modifies the renderBuffer by writing color data into it starting from the given position."
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The next writing position within renderBuffer."
+      }
+    },
+    {
+      "name": "drawColClassBarLegend",
+      "namespace": "SUM",
+      "signature": "SUM.drawColClassBarLegend(key, currentClassBar, prevHeight, totalHeight, fewClasses)",
+      "description": "This function draws a legend for column class bars in a heatmap visualization. It calculates the positions and dimensions of the legend elements based on the provided parameters and the dimensions of the existing canvas elements.",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String",
+          "description": "The key or label for the current class bar."
+        },
+        {
+          "name": "currentClassBar",
+          "type": "Object",
+          "description": "An object representing the current class bar, including its height."
+        },
+        {
+          "name": "prevHeight",
+          "type": "Number",
+          "description": "The cumulative height of all previous class bars."
+        },
+        {
+          "name": "totalHeight",
+          "type": "Number",
+          "description": "The total height of all class bars combined."
+        },
+        {
+          "name": "fewClasses",
+          "type": "Boolean",
+          "description": "A flag indicating whether there are few classes or not."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by creating and positioning a new div element for the legend."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "removeRowClassBarLabels",
+      "namespace": "SUM",
+      "signature": "SUM.removeRowClassBarLabels()",
+      "description": "Removes all elements with the class name 'classLabelVertical' from the DOM.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by removing elements with the class name 'classLabelVertical'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawRowClassBarLabels",
+      "namespace": "SUM",
+      "signature": "SUM.drawRowClassBarLabels()",
+      "description": "Draws labels for row classification bars on a summary canvas. It calculates the total height of all visible classification bars, determines their positions, and places the labels accordingly.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by adding label elements for row classification bars."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "removeColClassBarLabels",
+      "namespace": "SUM",
+      "signature": "SUM.removeColClassBarLabels()",
+      "description": "Removes all elements with the class name 'classLabel' from the DOM.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by removing elements with the class name 'classLabel'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawColClassBarLabels",
+      "namespace": "SUM",
+      "signature": "SUM.drawColClassBarLabels()",
+      "description": "Draws column classification bar labels on a heat map by iterating through the classification configuration and order, and invoking the drawColClassBarLabel function for each visible classification bar.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by drawing column classification bar labels.",
+        "Calls SUM.removeColClassBarLabels() to clear existing labels."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawColClassBarLabel",
+      "namespace": "SUM",
+      "signature": "SUM.drawColClassBarLabel(key, currentClassBar, prevHeight)",
+      "description": "Draws a label for a column class bar in a heatmap visualization. The label is positioned to the right of the bars and is aligned vertically based on the provided parameters.",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String",
+          "description": "The key used to retrieve the label text for the column class bar."
+        },
+        {
+          "name": "currentClassBar",
+          "type": "Object",
+          "description": "An object representing the current class bar, containing properties such as height."
+        },
+        {
+          "name": "prevHeight",
+          "type": "Number",
+          "description": "The cumulative height of all previous class bars, used to calculate the vertical position of the current label."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by creating and positioning a new div element for the label."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setLabelDivElement",
+      "namespace": "SUM",
+      "signature": "SUM.setLabelDivElement(itemId, boundVal, topVal, leftVal, isRowVal)",
+      "description": "Creates a div element with a specified ID, sets its inner HTML to a given value, and positions it at specified coordinates. If the element already exists, it updates its position. Optionally, it can style the element for row values.",
+      "parameters": [
+        {
+          "name": "itemId",
+          "type": "String",
+          "description": "The ID of the div element to be created or updated."
+        },
+        {
+          "name": "boundVal",
+          "type": "String",
+          "description": "The value to be set as the inner HTML of the div element."
+        },
+        {
+          "name": "topVal",
+          "type": "Number",
+          "description": "The top position (in pixels) where the div element should be placed."
+        },
+        {
+          "name": "leftVal",
+          "type": "Number",
+          "description": "The left position (in pixels) where the div element should be placed."
+        },
+        {
+          "name": "isRowVal",
+          "type": "Boolean",
+          "description": "A flag indicating whether the element should be styled for row values."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Creates a new div element and appends it to the SUM.chmElement if it does not already exist.",
+        "Updates the position of the div element.",
+        "Styles the div element if isRowVal is true."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawColClassBarLegends",
+      "namespace": "SUM",
+      "signature": "SUM.drawColClassBarLegends()",
+      "description": "Draws the column classification bar legends based on the configuration and data from the heat map. It iterates through the classification order and draws each legend bar that is marked to be shown.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the display of the heat map by drawing classification bar legends."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawColClassBarLegend",
+      "namespace": "SUM",
+      "signature": "SUM.drawColClassBarLegend(key, currentClassBar, prevHeight, totalHeight, fewClasses)",
+      "description": "Draws a legend for column class bars on a heatmap, indicating high, mid, and low values for the current class bar.",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String",
+          "description": "A unique identifier for the legend elements."
+        },
+        {
+          "name": "currentClassBar",
+          "type": "Object",
+          "description": "An object representing the current class bar, containing height, high_bound, and low_bound properties."
+        },
+        {
+          "name": "prevHeight",
+          "type": "Number",
+          "description": "The cumulative height of all previous class bars."
+        },
+        {
+          "name": "totalHeight",
+          "type": "Number",
+          "description": "The total height of all class bars."
+        },
+        {
+          "name": "fewClasses",
+          "type": "Number",
+          "description": "An offset value to adjust the position of the legend."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by creating and positioning legend elements."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawColorPlotRowClassBar",
+      "namespace": "SUM",
+      "signature": "SUM.drawColorPlotRowClassBar(renderBuffer, pos, barWidth, classBarValues, classBarLength, colorMap, widthScale, heightScale)",
+      "description": "Draws a color plot row class bar on a render buffer. It iterates through class bar values, determines their corresponding colors, and fills the render buffer with these colors, scaled by width and height.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "object",
+          "description": "The buffer where the color plot row class bar will be drawn. It contains pixel data."
+        },
+        {
+          "name": "pos",
+          "type": "number",
+          "description": "The starting position in the render buffer where drawing begins."
+        },
+        {
+          "name": "barWidth",
+          "type": "number",
+          "description": "The width of the bar to be drawn."
+        },
+        {
+          "name": "classBarValues",
+          "type": "array",
+          "description": "An array of values representing the class bar."
+        },
+        {
+          "name": "classBarLength",
+          "type": "number",
+          "description": "The length of the class bar."
+        },
+        {
+          "name": "colorMap",
+          "type": "object",
+          "description": "An object that provides methods to get colors for classifications and missing values."
+        },
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scale factor for the width of the bar."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of the bar."
+        }
+      ],
+      "side_effects": [
+        "Modifies the renderBuffer by drawing the color plot row class bar."
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The new position in the render buffer after drawing is complete."
+      }
+    },
+    {
+      "name": "drawScatterBarPlotRowClassBar",
+      "namespace": "SUM",
+      "signature": "SUM.drawScatterBarPlotRowClassBar(renderBuffer, offset, height, classBarValues, covariateBar, widthScale, heightScale)",
+      "description": "Draws a scatter bar plot row class bar on the provided render buffer. This function processes the class bar values and covariate bar to generate a matrix, which is then used to fill the render buffer with the appropriate colors.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "RenderBuffer",
+          "description": "The buffer where the scatter bar plot will be drawn."
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "description": "The starting position in the render buffer to begin drawing."
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The width of the covariate bar."
+        },
+        {
+          "name": "classBarValues",
+          "type": "Array<number>",
+          "description": "An array of values representing the class bar."
+        },
+        {
+          "name": "covariateBar",
+          "type": "CovariateBar",
+          "description": "An object representing the covariate bar, which provides color information."
+        },
+        {
+          "name": "widthScale",
+          "type": "number",
+          "description": "The scale factor for the width of the scatter bar plot."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of the scatter bar plot."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the renderBuffer by drawing the scatter bar plot.",
+        "Updates the offset parameter to reflect the new drawing position."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawRowClassBarLegends",
+      "namespace": "SUM",
+      "signature": "SUM.drawRowClassBarLegends()",
+      "description": "Draws the row classification bar legends for a heat map based on the configuration and order provided by the heat map object.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the display of the heat map by drawing row classification bar legends."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawRowClassBarLegend",
+      "namespace": "SUM",
+      "signature": "SUM.drawRowClassBarLegend(key, currentClassBar, prevHeight, totalHeight, i)",
+      "description": "Draws the legend for a row class bar on a summary canvas, placing high, middle, and low legend values at appropriate positions based on the provided class bar data.",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String",
+          "description": "A unique identifier for the legend elements."
+        },
+        {
+          "name": "currentClassBar",
+          "type": "Object",
+          "description": "An object containing the height, high_bound, and low_bound properties of the current class bar."
+        },
+        {
+          "name": "prevHeight",
+          "type": "Number",
+          "description": "The cumulative height of all previous class bars."
+        },
+        {
+          "name": "totalHeight",
+          "type": "Number",
+          "description": "The total height of all class bars combined."
+        },
+        {
+          "name": "i",
+          "type": "Number",
+          "description": "The index of the current class bar."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by creating and positioning legend div elements."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setLegendDivElement",
+      "namespace": "SUM",
+      "signature": "SUM.setLegendDivElement(itemId, boundVal, topVal, leftVal, isRowVal)",
+      "description": "Creates a div element with a specified ID, sets its inner HTML to a bound value, and positions it at specified top and left values. If the element already exists, it updates its position. Optionally rotates the element if it is a row value.",
+      "parameters": [
+        {
+          "name": "itemId",
+          "type": "String",
+          "description": "The ID of the div element to create or update."
+        },
+        {
+          "name": "boundVal",
+          "type": "String",
+          "description": "The value to set as the inner HTML of the div element."
+        },
+        {
+          "name": "topVal",
+          "type": "Number",
+          "description": "The top position (in pixels) to place the div element."
+        },
+        {
+          "name": "leftVal",
+          "type": "Number",
+          "description": "The left position (in pixels) to place the div element."
+        },
+        {
+          "name": "isRowVal",
+          "type": "Boolean",
+          "description": "Indicates whether the div element should be rotated by 90 degrees."
+        }
+      ],
+      "side_effects": [
+        "Creates a new div element and appends it to SUM.chmElement if it does not already exist.",
+        "Updates the position of the div element.",
+        "Optionally rotates the div element by 90 degrees if isRowVal is true."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildScatterBarPlotMatrix",
+      "namespace": "SUM",
+      "signature": "SUM.buildScatterBarPlotMatrix(height, heightScale, barValues, covariateBar)",
+      "description": "Generates a matrix for drawing a scatter or bar plot based on the provided bar values and covariate bar properties. The matrix contains values representing different color indices for background, foreground, and cut values. The matrix orientation corresponds to column covariate bars and needs to be transposed for row covariate bars.",
+      "parameters": [
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The height of the matrix."
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "description": "The scale factor for the height of the matrix."
+        },
+        {
+          "name": "barValues",
+          "type": "Array<number|string>",
+          "description": "Array of values to be plotted. Special value '!CUT!' indicates a cut color index."
+        },
+        {
+          "name": "covariateBar",
+          "type": "object",
+          "description": "Object containing properties for the covariate bar, including bar_type, low_bound, and high_bound."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array<Uint8Array>",
+        "description": "A matrix with height*heightScale rows and barValues.length columns, containing values 0 (bg color index), 1 (fg color index), or 2 (cut color index)."
+      }
+    },
+    {
+      "name": "getSummaryCovariateBarHeights",
+      "namespace": "SUM",
+      "signature": "SUM.getSummaryCovariateBarHeights(axis)",
+      "description": "Returns the scaled heights of all covariate bars on the specified axis. Hidden bars will have height zero. The order of entries is fixed but not specified.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the covariate bar heights are to be retrieved."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of scaled heights for the covariate bars on the specified axis."
+      }
+    },
+    {
+      "name": "calculateSummaryTotalClassBarHeight",
+      "namespace": "SUM",
+      "signature": "SUM.calculateSummaryTotalClassBarHeight(axis)",
+      "description": "Returns the total scaled heights of all covariate bars on the specified axis.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the total height of covariate bars is to be calculated."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Number",
+        "description": "The total height of all covariate bars on the specified axis."
+      }
+    },
+    {
+      "name": "isVisible",
+      "namespace": "SUM",
+      "signature": "SUM.isVisible()",
+      "description": "Returns true if the Summary View is visible, meaning it is contained in a visible pane that is not collapsed.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "True if the Summary View is visible, false otherwise."
+      }
+    },
+    {
+      "name": "redrawSummaryPane",
+      "namespace": "SUM",
+      "signature": "SUM.redrawSummaryPane()",
+      "description": "Redraws the summary pane. This function is designed to make resizing smoother by breaking the drawing process into two phases. Phase 1 provides immediate feedback to the user, while Phase 2 performs more time-consuming operations during a lull in updates.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Clears and resets various elements and textures in the summary pane.",
+        "Sets and clears timeouts and animation frames.",
+        "Logs debug information if debugging is enabled."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "initSummarySize",
+      "namespace": "SUM",
+      "signature": "SUM.initSummarySize()",
+      "description": "Initializes the summary size by setting the top items size and calculating the summary layout.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Calls SUM.setTopItemsSize() to set the size of top items.",
+        "Calls SUM.calcSummaryLayout() to calculate the layout of the summary."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "calcSummaryLayout",
+      "namespace": "SUM",
+      "signature": "SUM.calcSummaryLayout()",
+      "description": "Calculates and sets the layout for the summary NGCHM (Next-Generation Clustered Heat Map) based on the adjusted size of its enclosing pane. This includes determining the sizes and positions of various elements such as top items, class bars, dendrograms, and the main matrix.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the global SUM.layout object with the calculated layout properties.",
+        "Updates the positions and sizes of various elements in the DOM using UTIL.setElementPositionSize.",
+        "Calls SUM.setTopItemsSize() to adjust the size of top items.",
+        "Calls SUM.setSelectionDivSize(layout) to adjust the size of selection divs."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "redrawSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.redrawSelectionMarks()",
+      "description": "Clear and redraw the selection marks on both axes.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Calls SUM.clearSelectionMarks() to clear existing selection marks.",
+        "Calls SUM.drawSelectionMarks() to redraw selection marks."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.drawSelectionMarks()",
+      "description": "Draws the selection marks on both row and column axes by calling the drawAxisSelectionMarks function for each axis.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawAxisSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.drawAxisSelectionMarks(axis)",
+      "description": "Draws the selection marks on the specified axis of a heat map. This function calculates the positions and sizes of the selection marks based on the search results and draws them on a canvas element.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis on which to draw the selection marks. It can be either 'Row' or 'Column'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the canvas element by drawing selection marks on it."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawMissingRowClassBarsMark",
+      "namespace": "SUM",
+      "signature": "SUM.drawMissingRowClassBarsMark()",
+      "description": "Draws a marker for missing row class bars on the canvas. If an element with the ID 'missingSumRowClassBars' exists, it removes existing labels and adds a new label div at a calculated position based on the canvas's offset and dimensions.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Removes labels with ID 'missingSumRowClassBars'.",
+        "Adds a new label div to the element with ID 'sumlabelDiv'."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawMissingColClassBarsMark",
+      "namespace": "SUM",
+      "signature": "SUM.drawMissingColClassBarsMark()",
+      "description": "This function handles the drawing of missing column class bars mark on a canvas. It checks for the presence of an element with the ID 'missingSumColClassBars', removes existing labels, and then calculates the position to add new label divs.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Removes existing labels with ID 'missingSumColClassBars'.",
+        "Adds new label divs to the element with ID 'sumlabelDiv'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return any value."
+      }
+    },
+    {
+      "name": "clearSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.clearSelectionMarks(searchTarget)",
+      "description": "Clears selection marks based on the specified search target. If the search target is 'Row', it clears row selection marks. If the search target is 'Column', it clears column selection marks. If no search target is specified or if the search target is not recognized, it clears both row and column selection marks.",
+      "parameters": [
+        {
+          "name": "searchTarget",
+          "type": "String",
+          "description": "Specifies the type of selection marks to clear. Acceptable values are 'Row' or 'Column'. If undefined or any other value, both row and column selection marks are cleared."
+        }
+      ],
+      "side_effects": [
+        "Calls SUM.clearRowSelectionMarks() to clear row selection marks.",
+        "Calls SUM.clearColSelectionMarks() to clear column selection marks."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "clearAxisSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.clearAxisSelectionMarks(axis)",
+      "description": "Clears the selection marks on the specified axis. If the axis is a row, it clears row selection marks; otherwise, it clears column selection marks.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis to clear selection marks from. It can be either a row or a column."
+        }
+      ],
+      "side_effects": [
+        "Clears selection marks on the specified axis."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "clearRowSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.clearRowSelectionMarks()",
+      "description": "Clears the row selection marks from the canvas element with the ID 'summary_row_select_canvas'. This function is typically used to reset the visual selection state in a summary view.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the canvas element with the ID 'summary_row_select_canvas' by clearing its content."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "clearColSelectionMarks",
+      "namespace": "SUM",
+      "signature": "SUM.clearColSelectionMarks()",
+      "description": "Clears the column selection marks on a canvas element with the ID 'summary_col_select_canvas'.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Clears the drawing on the canvas element with the ID 'summary_col_select_canvas' if it exists."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "clearTopItems",
+      "namespace": "SUM",
+      "signature": "SUM.clearTopItems()",
+      "defined_section": "TopItem Related Functions",
+      "description": "Clears all elements with the class 'topItems' from the document and clears the content of canvases with IDs 'summary_col_top_items_canvas' and 'summary_row_top_items_canvas'.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Removes all elements with the class 'topItems' from the document.",
+        "Clears the content of the canvas with ID 'summary_col_top_items_canvas'.",
+        "Clears the content of the canvas with ID 'summary_row_top_items_canvas'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setTopItemsSize",
+      "namespace": "SUM",
+      "signature": "SUM.setTopItemsSize()",
+      "description": "Sets the size required for the row and column top items by calculating their maximum width and height.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies SUM.colTopItemsWidth to store the maximum width of column top items.",
+        "Modifies SUM.rowTopItemsHeight to store the maximum height of row top items.",
+        "Creates and removes a temporary HTML element for measuring text properties."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "calcTopItemsMaxWidth",
+      "namespace": "None",
+      "signature": "calcTopItemsMaxWidth(axis)",
+      "description": "Calculates the maximum width of the top item labels for a given axis, including a small margin to prevent overlap.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the top item labels' maximum width is to be calculated."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Number",
+        "description": "The maximum width of the top item labels for the specified axis, including a small margin."
+      }
+    },
+    {
+      "name": "drawTopItems",
+      "namespace": "SUM",
+      "signature": "SUM.drawTopItems()",
+      "description": "Draws the top items on the summary panel by clearing any existing top items, calculating their positions, and rendering them on the canvas.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Clears existing top items from the summary panel.",
+        "Modifies SUM.colTopItemPosns and SUM.rowTopItemPosns arrays.",
+        "Appends and removes DOM elements to/from SUM.chmElement."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "topItemPositions",
+      "namespace": "None",
+      "signature": "topItemPositions(topItemsIndex, matrixSize, itemSize, canvasSize, summaryRatio)",
+      "description": "Calculates the positions of top items on a canvas, ensuring that items do not overlap and are distributed evenly based on the provided parameters.",
+      "parameters": [
+        {
+          "name": "topItemsIndex",
+          "type": "Array<number>",
+          "description": "An array of indices representing the top items to be positioned."
+        },
+        {
+          "name": "matrixSize",
+          "type": "number",
+          "description": "The size of the matrix from which the top items are derived."
+        },
+        {
+          "name": "itemSize",
+          "type": "number",
+          "description": "The size of each item to be positioned on the canvas."
+        },
+        {
+          "name": "canvasSize",
+          "type": "number",
+          "description": "The size of the canvas on which the items are to be positioned."
+        },
+        {
+          "name": "summaryRatio",
+          "type": "number",
+          "description": "A ratio used to summarize the matrix size in relation to the canvas size."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array<{labelIndex: number, itemFrac: number, labelFrac: number}>",
+        "description": "An array of objects, each containing the label index, item fraction, and label fraction for each top item."
+      }
+    },
+    {
+      "name": "clumpEdge",
+      "namespace": "None",
+      "signature": "clumpEdge(posList, position)",
+      "description": "Determines if a clump of adjacent labels in the position array should be moved one position to the left. A clump is defined as a sequence of non-negative values in the posList array. The function returns the index of the leftmost label in the clump if it should be shifted or -1 otherwise.",
+      "parameters": [
+        {
+          "name": "posList",
+          "type": "Array",
+          "description": "An array of positions where each element represents a label position. A value of -1 indicates no label at that position."
+        },
+        {
+          "name": "position",
+          "type": "Number",
+          "description": "The index of any label in the clump (i.e., posList[position] != -1)."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Number",
+        "description": "The index of the leftmost label in the clump if it should be shifted left, or -1 otherwise."
+      }
+    },
+    {
+      "name": "placeTopItemLabels",
+      "namespace": "None",
+      "signature": "placeTopItemLabels(canvas, topItemPosns, axis, otherAxisPosn)",
+      "description": "Adds labels to the top items on a given canvas element based on their positions and axis information.",
+      "parameters": [
+        {
+          "name": "canvas",
+          "type": "HTMLElement",
+          "description": "The canvas element where the labels will be placed."
+        },
+        {
+          "name": "topItemPosns",
+          "type": "Array",
+          "description": "An array of objects containing the positions and label indices of the top items."
+        },
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis along which the labels are to be placed."
+        },
+        {
+          "name": "otherAxisPosn",
+          "type": "Number",
+          "description": "The position along the other axis where the labels will be placed."
+        }
+      ],
+      "side_effects": [
+        "Appends new div elements with class 'topItems' to SUM.chmElement.",
+        "Modifies the style properties of the newly created div elements."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getTopItemLabelIndices",
+      "namespace": "None",
+      "signature": "getTopItemLabelIndices(axis)",
+      "description": "Returns an array of the label indices of the top items on the specified axis. The function processes the top items by trimming, filtering out empty items, and ensuring uniqueness. It then maps these items to their corresponding label indices, filters out invalid indices, limits the result to a maximum of ten indices, and sorts them in increasing numerical order.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve the top item label indices. It determines whether to use row or column top items."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of integers representing the indices of the top item labels on the specified axis, sorted in increasing numerical order."
+      }
+    }
+  ]
+}

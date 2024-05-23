@@ -1,0 +1,358 @@
+{
+  "filename": "FlickManager.js",
+  "namespace": "NgChm.FLICK",
+  "description": [
+    "This module manages the flick view functionality within the NgChm application. It provides functions to enable, disable, and toggle flick views, as well as to manage the state of flick elements."
+  ],
+  "declares_functions_in": [
+    "NgChm.FLICK"
+  ],
+  "interacts_with": [
+    "NgChm"
+  ],
+  "classes": [],
+  "member_variables": [],
+  "global_variables": [
+    {
+      "name": "flicksElement",
+      "description": "The DOM element for layer control."
+    },
+    {
+      "name": "layersOpenClose",
+      "description": "The DOM element for opening and closing layers."
+    },
+    {
+      "name": "flickBtn",
+      "description": "The DOM element for the flick button."
+    },
+    {
+      "name": "flickViewsElement",
+      "description": "The DOM element for flick views."
+    },
+    {
+      "name": "flickDrop1",
+      "description": "The DOM element for the first flick dropdown."
+    },
+    {
+      "name": "flickDrop2",
+      "description": "The DOM element for the second flick dropdown."
+    }
+  ],
+  "exports": [
+    "enableFlicks",
+    "disableFlicks",
+    "flickIsOn",
+    "isFlickUp",
+    "getFlickState",
+    "setFlickState",
+    "toggleFlickState",
+    "setFlickHandler",
+    "getFlickSaveState"
+  ],
+  "functions": [
+    {
+      "name": "enableFlicks",
+      "namespace": "None",
+      "signature": "enableFlicks(layers, options, savedState)",
+      "defined_section": "FLICK VIEW PROCESSING FUNCTIONS",
+      "description": "Initializes and configures the flick view based on provided layers, options, and saved state. Updates the flick drop-down elements and sets the display state accordingly.",
+      "parameters": [
+        {
+          "name": "layers",
+          "type": "Array",
+          "description": "An array of layer names available for flick view."
+        },
+        {
+          "name": "options",
+          "type": "String",
+          "description": "HTML string representing the options to be displayed in the flick drop-down elements."
+        },
+        {
+          "name": "savedState",
+          "type": "Object",
+          "description": "An object containing the saved state of the flick view, including the button state and selected layers."
+        }
+      ],
+      "side_effects": [
+        "Updates the innerHTML of flickDrop1 and flickDrop2 with the provided options.",
+        "Sets the dataset state of flickViewsElement based on the saved state.",
+        "Updates the value of flickDrop1 and flickDrop2 based on the saved state and available layers.",
+        "Displays the flicksElement."
+      ],
+      "returns": {
+        "type": "String",
+        "description": "The value of the selected flick drop-down element, either flickDrop1 or flickDrop2, depending on the current flick state."
+      }
+    },
+    {
+      "name": "disableFlicks",
+      "namespace": "None",
+      "signature": "disableFlicks()",
+      "description": "This function hides the HTML element associated with the variable 'flicksElement' by setting its display style to 'none'.",
+      "parameters": [],
+      "side_effects": [
+        "Modifies the display style of the 'flicksElement' to 'none'."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getFlickSaveState",
+      "namespace": "None",
+      "signature": "getFlickSaveState()",
+      "description": "Retrieves the current state of the flick button and dropdown elements and returns it as an object.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the current state of the flick button and dropdown elements."
+      }
+    },
+    {
+      "name": "flickIsOn",
+      "namespace": "None",
+      "signature": "flickIsOn()",
+      "description": "Returns true if the user has opened the flick control by checking if the flickViews DIV is visible.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "True if the flickViews DIV is visible, otherwise false."
+      }
+    },
+    {
+      "name": "isFlickUp",
+      "namespace": "None",
+      "signature": "isFlickUp()",
+      "description": "Checks if the flickViewsElement's dataset state is set to 'flickUp'.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the dataset state is 'flickUp', otherwise false."
+      }
+    },
+    {
+      "name": "flickToggleOn",
+      "namespace": "None",
+      "signature": "flickToggleOn()",
+      "description": "Opens the flick control and ensures that the dropdowns contain different options, with the selected option in the top box.",
+      "parameters": [],
+      "side_effects": [
+        "Modifies the selectedIndex of flickDrop2 if it matches flickDrop1.",
+        "Changes the display style of flickViewsElement.",
+        "Updates the dataset state of layersOpenClose to 'open'."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "flickToggleOff",
+      "namespace": "None",
+      "signature": "flickToggleOff()",
+      "description": "Closes (hides) the flick control by setting the display style of the flickViewsElement to 'none' and updates the state of layersOpenClose to 'closed'.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the display style of flickViewsElement to 'none'.",
+        "Updates the dataset state of layersOpenClose to 'closed'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "flickToggleOnOff",
+      "namespace": "None",
+      "signature": "flickToggleOnOff()",
+      "description": "Toggles the state of a UI element between 'on' and 'off' based on its current state.",
+      "parameters": [],
+      "side_effects": [
+        "Calls flickToggleOn() if the current state is 'closed'.",
+        "Calls flickToggleOff() if the current state is not 'closed'."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "toggleFlickState",
+      "namespace": "None",
+      "signature": "toggleFlickState(flickElement)",
+      "description": "Low-level utility to change the state of the flick button and return the value associated with the new state. Used by UI Manager.flickChange(). You should call that function if you want to change the flick state.",
+      "parameters": [
+        {
+          "name": "flickElement",
+          "type": "string",
+          "description": "The flick element to toggle or change state. Can be 'toggle', 'flick1', or 'flick2'."
+        }
+      ],
+      "side_effects": [
+        "Modifies the state of the flick button.",
+        "May trigger a redraw if the layer changes."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the updated flick element, the layer, and a boolean indicating if a redraw is required."
+      }
+    },
+    {
+      "name": "setFlickState",
+      "namespace": "None",
+      "signature": "setFlickState(flickElement)",
+      "description": "Sets the state of the flickViewsElement based on the provided flickElement and returns the associated value or 'dl1' if no value is associated.",
+      "parameters": [
+        {
+          "name": "flickElement",
+          "type": "string",
+          "description": "The identifier of the flick element, expected to be either 'flick1' or another value."
+        }
+      ],
+      "side_effects": [
+        "Updates the dataset.state property of the flickViewsElement."
+      ],
+      "returns": {
+        "type": "string",
+        "description": "The value associated with the flickElement or 'dl1' if no associated value is found."
+      }
+    },
+    {
+      "name": "getFlickState",
+      "namespace": "None",
+      "signature": "getFlickState()",
+      "description": "Determines the state of flick elements based on their visibility and dataset state, returning an array of flick objects.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of flick objects, each containing an element and a layer property."
+      }
+    },
+    {
+      "name": "setFlickHandler",
+      "namespace": "None",
+      "signature": "setFlickHandler(flickHandler)",
+      "description": "Sets up event handlers for flick-related UI elements. When these elements are interacted with, the provided flickHandler function is called with the updated flick state.",
+      "parameters": [
+        {
+          "name": "flickHandler",
+          "type": "function",
+          "description": "A callback function that handles the flick state changes."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Attaches event handlers to elements with IDs 'flick_btn', 'flick1', and 'flick2'.",
+        "Calls the flickHandler function with the updated flick state."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "onclick(event)",
+      "description": "This function is an event handler for the 'click' event on an element with the ID 'flick_btn'. It toggles the flick state and handles the flick action.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object associated with the 'click' event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the flick state by calling toggleFlickState with the argument 'toggle'.",
+        "Calls flickHandler with the result of toggleFlickState."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onchange",
+      "namespace": "None",
+      "signature": "onchange(event)",
+      "description": "This function sets an onchange event handler for the HTML element with the ID 'flick1'. When the element's value changes, it toggles the flick state and handles the flick action.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object that is passed to the onchange event handler."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the state of the element with ID 'flick1'.",
+        "Calls the flickHandler function with the new state."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onchange",
+      "namespace": "None",
+      "signature": "onchange(event)",
+      "description": "This function is an event handler for the 'change' event on the HTML element with the ID 'flick2'. It toggles the state of the element and then handles the new state using the flickHandler function.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object associated with the 'change' event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the state of the HTML element with the ID 'flick2'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "layersOpenClose",
+      "signature": "layersOpenClose.onclick(event)",
+      "description": "This function is an event handler for the 'onclick' event of the 'layersOpenClose' element. It toggles the visibility or state of a specific layer by calling the 'flickToggleOnOff' function.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object associated with the 'onclick' event."
+        }
+      ],
+      "side_effects": [
+        "Calls the 'flickToggleOnOff' function which may change the visibility or state of a specific layer."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}

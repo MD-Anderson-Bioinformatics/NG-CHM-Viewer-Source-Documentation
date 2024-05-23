@@ -1,0 +1,23 @@
+{
+  "filename": "Config.js",
+  "namespace": "NgChm.CFG",
+  "description": [
+    "This module configures the NGCHM (Next Generation Clustered Heat Map) settings, including API location, custom script location, and builder URL."
+  ],
+  "declares_functions_in": [
+    "NgChm.CFG"
+  ],
+  "interacts_with": [
+    "NgChm"
+  ],
+  "classes": [],
+  "member_variables": [],
+  "global_variables": [
+    {
+      "name": "defaultBuilderURL",
+      "description": "The default URL for the NGCHM GUI builder."
+    }
+  ],
+  "exports": [],
+  "functions": []
+}

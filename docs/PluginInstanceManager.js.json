@@ -1,0 +1,404 @@
+{
+  "filename": "PluginInstanceManager.js",
+  "namespace": "NgChm.PIM",
+  "description": [
+    "This module manages plugin instances within the application. It provides functionalities to create, retrieve, and manage plugin instances, as well as communicate with them through messages."
+  ],
+  "declares_functions_in": [
+    "PIM"
+  ],
+  "interacts_with": [
+    "NgChm.UTIL",
+    "NgChm.UHM",
+    "NgChm.MMGR",
+    "NgChm.Pane",
+    "NgChm.SRCHSTATE"
+  ],
+  "classes": [
+    {
+      "name": "PluginInstance",
+      "description": "Class representing a plugin instance, identified by a unique nonce."
+    }
+  ],
+  "member_variables": [],
+  "global_variables": [
+    {
+      "name": "instances",
+      "description": "Object mapping nonces to plugin instances."
+    }
+  ],
+  "exports": [
+    "PIM.createPluginInstance",
+    "PIM.getPluginInstance",
+    "PIM.getPluginInstanceByName",
+    "PIM.getPluginInstances",
+    "PIM.havePluginData",
+    "PIM.postSelectionToPlugins",
+    "PIM.removePluginInstance",
+    "PIM.requestDataFromPlugins",
+    "PIM.sendMessageToAllOtherPlugins",
+    "PIM.sendMessageToPlugin",
+    "PIM.setPanePluginOptions",
+    "PIM.warnAboutMissingPluginData"
+  ],
+  "functions": [
+    {
+      "name": "constructor",
+      "namespace": "PluginInstance",
+      "signature": "PluginInstance:constructor()",
+      "description": "Initializes a new instance of the PluginInstance class, setting up various properties and ensuring the plugin kind is valid.",
+      "parameters": [
+        {
+          "name": "options",
+          "type": "object",
+          "description": "An object containing various properties to initialize the plugin instance."
+        },
+        {
+          "name": "options.kind",
+          "type": "string",
+          "description": "The type of plugin. Defaults to 'panel-plugin' if not provided."
+        },
+        {
+          "name": "options.nonce",
+          "type": "string",
+          "description": "A unique identifier for the plugin instance."
+        },
+        {
+          "name": "options.source",
+          "type": "string",
+          "description": "The source of the plugin."
+        },
+        {
+          "name": "options.plugin",
+          "type": "string",
+          "description": "The plugin identifier."
+        },
+        {
+          "name": "options.params",
+          "type": "object",
+          "description": "Parameters for the plugin."
+        },
+        {
+          "name": "options.iframe",
+          "type": "object",
+          "description": "The iframe element associated with the plugin."
+        },
+        {
+          "name": "options.config",
+          "type": "object",
+          "description": "Configuration settings for the plugin."
+        },
+        {
+          "name": "options.dataFromPlugin",
+          "type": "object",
+          "description": "Data received from the plugin."
+        }
+      ],
+      "side_effects": [
+        "Displays an alert if the plugin kind is unknown."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "UnknownPluginKind",
+          "description": "Displays an alert message 'Unknown plugin kind' if the provided kind is not recognized."
+        }
+      ],
+      "returns": {
+        "type": "PluginInstance",
+        "description": "A new instance of the PluginInstance class."
+      }
+    },
+    {
+      "name": "getPluginInstance",
+      "namespace": "PIM",
+      "signature": "PIM.getPluginInstance(nonce)",
+      "description": "Retrieves a plugin instance from the instances collection using the provided nonce.",
+      "parameters": [
+        {
+          "name": "nonce",
+          "type": "String",
+          "description": "A unique identifier used to retrieve the specific plugin instance."
+        }
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "The plugin instance associated with the provided nonce."
+      }
+    },
+    {
+      "name": "getPluginInstances",
+      "namespace": "PIM",
+      "signature": "PIM.getPluginInstances()",
+      "description": "Retrieves the current instances of plugins managed by the PIM module.",
+      "parameters": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of plugin instances."
+      }
+    },
+    {
+      "name": "removePluginInstance",
+      "namespace": "PIM",
+      "signature": "PIM.removePluginInstance(loc, elements)",
+      "description": "Removes a plugin instance identified by a nonce from the global instances object.",
+      "parameters": [
+        {
+          "name": "loc",
+          "type": "any",
+          "description": "Location parameter, not used in the function."
+        },
+        {
+          "name": "elements",
+          "type": "Array",
+          "description": "Array of elements containing the IFRAME with the nonce to be removed."
+        }
+      ],
+      "side_effects": [
+        "Modifies the global instances object by deleting the entry corresponding to the nonce."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getPluginInstanceByName",
+      "namespace": "PIM",
+      "signature": "PIM.getPluginInstanceByName(name)",
+      "description": "Retrieves a plugin instance by its name from the instances object. If no instance with the specified name is found, it returns null.",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "String",
+          "description": "The name of the plugin instance to retrieve."
+        }
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "The plugin instance object if found, otherwise null."
+      }
+    },
+    {
+      "name": "setPanePluginOptions",
+      "namespace": "PIM",
+      "signature": "PIM.setPanePluginOptions(element, options, initializePlugin)",
+      "description": "Sets the parameters for a panel plugin instance, updates the panel's title bar, and initializes the plugin with the provided options.",
+      "parameters": [
+        {
+          "name": "element",
+          "type": "HTMLElement",
+          "description": "A DOM element within the panel plugin."
+        },
+        {
+          "name": "options",
+          "type": "object",
+          "description": "An object containing the parameters to set for the plugin."
+        },
+        {
+          "name": "initializePlugin",
+          "type": "function",
+          "description": "A callback function to initialize the plugin with the provided options."
+        }
+      ],
+      "side_effects": [
+        "Updates the title bar of the panel.",
+        "Modifies the 'params' property of the plugin instance associated with the nonce."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getNewNonce",
+      "namespace": "None",
+      "signature": "function getNewNonce()",
+      "description": "Generates a new, unique nonce (number used once) by creating a 16-byte array of random values and converting it to a hexadecimal string.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "string",
+        "description": "A 32-character hexadecimal string representing the generated nonce."
+      }
+    },
+    {
+      "name": "createPluginInstance",
+      "namespace": "PIM",
+      "signature": "PIM.createPluginInstance(kind, plugin)",
+      "description": "Creates a new instance of the specified plugin and returns the iframe associated with the new instance. The caller is responsible for inserting the iframe into the correct place in the DOM.",
+      "parameters": [
+        {
+          "name": "kind",
+          "type": "String",
+          "description": "The type or category of the plugin."
+        },
+        {
+          "name": "plugin",
+          "type": "Plugin",
+          "description": "An object representing the plugin, containing properties such as 'src' and 'config'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Creates a new iframe element and associates it with a new PluginInstance.",
+        "Modifies the global 'instances' object by adding a new PluginInstance."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "HTMLIFrameElement",
+        "description": "The iframe element associated with the new plugin instance."
+      }
+    },
+    {
+      "name": "onload",
+      "namespace": "iframe",
+      "signature": "iframe.onload()",
+      "description": "This function is triggered when the iframe has finished loading. It sends a message to a plugin with a nonce operation.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Sends a message to a plugin using PIM.sendMessageToPlugin."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "sendMessageToPlugin",
+      "namespace": "PIM",
+      "signature": "PIM.sendMessageToPlugin(msg)",
+      "description": "Send a Vanodi message to the plugin instance identified by msg.nonce.",
+      "parameters": [
+        {
+          "name": "msg",
+          "type": "object",
+          "description": "The message object containing the nonce and other data to be sent to the plugin instance."
+        }
+      ],
+      "side_effects": [
+        "Logs a warning to the console if the plugin instance with the specified nonce does not exist."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "requestDataFromPlugins",
+      "namespace": "PIM",
+      "signature": "PIM.requestDataFromPlugins()",
+      "description": "Requests data generated by plugins that is required to recreate the state of each plugin (e.g., the zoom level on a scatter plot).",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Sends a message to each plugin instance requesting data."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "havePluginData",
+      "namespace": "PIM",
+      "signature": "PIM.havePluginData()",
+      "description": "Checks if all plugins have reported their data by comparing the list of plugins that have data with the total list of plugins.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if all plugins have reported their data, otherwise returns false."
+      }
+    },
+    {
+      "name": "warnAboutMissingPluginData",
+      "namespace": "PIM",
+      "signature": "PIM.warnAboutMissingPluginData()",
+      "description": "Displays a warning message if some plugins did not provide their data.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Displays a warning message box if some plugins did not provide their data."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns false if all plugins have provided their data, otherwise displays a warning message."
+      }
+    },
+    {
+      "name": "sendMessageToAllOtherPlugins",
+      "namespace": "PIM",
+      "signature": "PIM.sendMessageToAllOtherPlugins(srcNonce, msg)",
+      "description": "Send a Vanodi message to all plugin instances except the one identified by srcNonce.",
+      "parameters": [
+        {
+          "name": "srcNonce",
+          "type": "String",
+          "description": "The nonce of the source plugin instance to be excluded from receiving the message."
+        },
+        {
+          "name": "msg",
+          "type": "Object",
+          "description": "The message object to be sent to other plugin instances."
+        }
+      ],
+      "side_effects": [
+        "Sends a message to all iframe elements on the page except the one with the matching srcNonce."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "postSelectionToPlugins",
+      "namespace": "PIM",
+      "signature": "PIM.postSelectionToPlugins(axis, clickType, lastClickIndex, srcNonce)",
+      "description": "Send a message to all plugins regarding selected labels based on the axis, click type, last clicked index, and source nonce.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "'Column' (if column label clicked) or 'Row' (if row label clicked)"
+        },
+        {
+          "name": "clickType",
+          "type": "String",
+          "description": "Denotes type of click. Choices: 'standardClick' & 'ctrlClick'"
+        },
+        {
+          "name": "lastClickIndex",
+          "type": "int",
+          "description": "Index of last-clicked label. Can be '0' (e.g. if clicked dendogram)."
+        },
+        {
+          "name": "srcNonce",
+          "type": "String",
+          "description": "Nonce for plugin"
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Sends a message to all other plugins with the selected labels and click information."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "pointId is null",
+          "description": "Logs an error message to the console if pointId is null."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    }
+  ]
+}

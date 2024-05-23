@@ -1,0 +1,1176 @@
+{
+  "filename": "DetailHeatMapEvent.js",
+  "namespace": "NgChm.DEV",
+  "description": [
+    "This module handles various events and interactions for the detail heat map in the NgChm application. It includes functions for managing mouse and touch events, zooming in and out, and generating help pop-up panels for the detail heat map and its classification bars."
+  ],
+  "declares_functions_in": [
+    "DEV"
+  ],
+  "interacts_with": [
+    "NgChm.MAPREP",
+    "NgChm.MMGR",
+    "NgChm.DVW",
+    "NgChm.DET",
+    "NgChm.UTIL",
+    "NgChm.UHM",
+    "NgChm.DDR",
+    "NgChm.SRCHSTATE",
+    "NgChm.SRCH",
+    "NgChm.SUM",
+    "NgChm.LNK",
+    "NgChm.DRAW",
+    "NgChm.Pane",
+    "NgChm.PIM"
+  ],
+  "classes": [],
+  "member_variables": [
+    {
+      "name": "DET.animating",
+      "description": "Indicates whether an animation is currently in progress."
+    },
+    {
+      "name": "DET.eventTimer",
+      "description": "Timer for handling delayed events."
+    }
+  ],
+  "global_variables": [
+    {
+      "name": "mouseEventActive",
+      "description": "Indicates whether a mouse event is currently active."
+    },
+    {
+      "name": "mouseDown",
+      "description": "Indicates whether the mouse button is currently pressed."
+    },
+    {
+      "name": "scrollTime",
+      "description": "Timer for scroll events to prevent multiple events firing after scroll ends."
+    }
+  ],
+  "exports": [
+    "DEV.clearScrollTime",
+    "DEV.setMouseDown",
+    "DEV.addEvents",
+    "DEV.userHelpOpen",
+    "DEV.handleScroll",
+    "DEV.clickStart",
+    "DEV.clickEnd",
+    "DEV.dblClick",
+    "DEV.matrixRightClick",
+    "DEV.handleMouseOut",
+    "DEV.handleMouseMove",
+    "DEV.handleMoveDrag",
+    "DEV.handleSelectDrag",
+    "DEV.getRowFromLayerY",
+    "DEV.getColFromLayerX",
+    "DEV.detailDataZoomIn",
+    "DEV.detailDataZoomOut",
+    "DEV.detailHRibbonButton",
+    "DEV.detailVRibbonButton",
+    "DEV.labelClick",
+    "DEV.labelDrag",
+    "DEV.labelRightClick",
+    "DEV.createClientButtons",
+    "DEV.zoomAnimation",
+    "DEV.setButtons"
+  ],
+  "functions": [
+    {
+      "name": "clearScrollTime",
+      "namespace": "DEV",
+      "signature": "DEV.clearScrollTime()",
+      "description": "Clears the scroll timer to prevent multiple scroll events from firing after the scroll ends.",
+      "parameters": [],
+      "side_effects": [
+        "Sets the global variable 'scrollTime' to null."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setMouseDown",
+      "namespace": "DEV",
+      "signature": "DEV.setMouseDown(isDown)",
+      "description": "Sets the state of the mouseDown variable to the provided boolean value.",
+      "parameters": [
+        {
+          "name": "isDown",
+          "type": "boolean",
+          "description": "A boolean value indicating whether the mouse button is pressed down (true) or not (false)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the global variable mouseDown."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addEvents",
+      "namespace": "DEV",
+      "signature": "DEV.addEvents(paneId)",
+      "description": "Adds various event listeners to the canvas elements of a specified heat map panel, enabling interaction through mouse and touch events.",
+      "parameters": [
+        {
+          "name": "paneId",
+          "type": "String",
+          "description": "The identifier of the pane containing the heat map."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Registers multiple event listeners on the canvas element of the specified heat map panel.",
+        "Modifies properties of the mapItem object such as latestTap, latestTapLocation, and latestPinchDistance."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addLabelTouchEventHandlers",
+      "namespace": "None",
+      "signature": "addLabelTouchEventHandlers(mapItem, labelDiv)",
+      "description": "Adds touch event handlers to a label element for handling touchstart and touchend events. It updates the latest label tap time on touchstart and triggers a right-click callback if the touchend event occurs after a specified duration.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the map item which contains properties and methods related to the label."
+        },
+        {
+          "name": "labelDiv",
+          "type": "HTMLElement",
+          "description": "The HTML element representing the label to which the touch event handlers will be added."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates mapItem.latestLabelTap with the current timestamp on touchstart.",
+        "Triggers mapItem.labelCallbacks.labelRightClick if the touchend event occurs after 500 milliseconds."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "userHelpOpen",
+      "namespace": "DEV",
+      "signature": "DEV.userHelpOpen(mapItem)",
+      "description": "This function handles all of the tasks necessary to generate help pop-up panels for the detail heat map and the detail heat map classification bars. It dynamically creates and displays a help panel with information about the specific area of the heat map or classification bar that the user interacts with.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object containing details about the heat map and the current interaction point, including dimensions, offsets, and canvas information."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Appends a help panel to the body of the document.",
+        "Modifies the display style of the help panel.",
+        "Posts messages to the parent window if UHM.postMapDetails is true."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "A",
+      "signature": "A.onclick(ev)",
+      "description": "Handles the click event by preventing the default action and invoking the pasteHelpContents function from the UHM namespace.",
+      "parameters": [
+        {
+          "name": "ev",
+          "type": "Event",
+          "description": "The event object associated with the click event."
+        }
+      ],
+      "side_effects": [
+        "Prevents the default action of the click event."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "handleScroll",
+      "namespace": "DEV",
+      "signature": "DEV.handleScroll(evt)",
+      "description": "The purpose of this function is to handle mouse scroll wheel events to zoom in or out on a map item. It determines whether the event is related to a detailed map or the primary map and performs the appropriate zoom action based on the scroll direction and scale.",
+      "parameters": [
+        {
+          "name": "evt",
+          "type": "Event",
+          "description": "The scroll event object containing details about the scroll action."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the zoom level of the map item based on the scroll event.",
+        "Updates the global variable scrollTime with the timestamp of the event."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Always returns false to prevent the default scroll behavior."
+      }
+    },
+    {
+      "name": "clickStart",
+      "namespace": "DEV",
+      "signature": "DEV.clickStart(e)",
+      "description": "Handles a user mouse down event, initializing various parameters and states for further interactions.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object representing the mouse down event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Sets mouseEventActive to true.",
+        "Sets mouseDown to true if clickType is 0.",
+        "Updates mapItem properties such as dragOffsetX, dragOffsetY, offsetX, offsetY, pageX, and pageY.",
+        "Clears and sets DET.eventTimer."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "clickEnd",
+      "namespace": "DEV",
+      "signature": "DEV.clickEnd(e)",
+      "description": "Handles a user mouse up event. If the mouse has not moved out of a given detail row/col between clickStart and clickEnd, user help is opened for that cell.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "MouseEvent",
+          "description": "The mouse event object containing details about the event."
+        }
+      ],
+      "side_effects": [
+        "Resets mouseDown to false.",
+        "Sets the cursor style of the map item canvas to default.",
+        "Sets mouseEventActive to false."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "dblClick",
+      "namespace": "DEV",
+      "signature": "DEV.dblClick(e)",
+      "description": "Handles the double-click event on the detail heat map canvas, performing a zoom action. Zooms in if the shift key is not held down and zooms out if it is.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The double-click event object."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Turns off single click help if double click.",
+        "Updates the mapItem's currentRow and currentCol properties.",
+        "Triggers a panning animation if not in full map view.",
+        "Zooms in or out based on the shift key state.",
+        "Centers the map on the cursor position."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawScene",
+      "namespace": "None",
+      "signature": "drawScene(now)",
+      "description": "This function animates the movement of a map item towards a destination over a series of steps. It updates the current row and column of the map item and requests the next animation frame until the destination is reached. Once the destination is reached, it performs a zoom action based on user input.",
+      "parameters": [
+        {
+          "name": "now",
+          "type": "number",
+          "description": "The current timestamp, typically provided by requestAnimationFrame."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the global variable 'steps'.",
+        "Modifies the properties 'currentRow' and 'currentCol' of the 'mapItem' object.",
+        "Calls 'DVW.checkRow', 'DVW.checkCol', and 'mapItem.updateSelection' to update the map view.",
+        "Requests the next animation frame using 'requestAnimationFrame'.",
+        "Calls 'DEV.detailDataZoomOut' or 'DEV.zoomAnimation' based on user input."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "matrixRightClick",
+      "namespace": "DEV",
+      "signature": "DEV.matrixRightClick(e)",
+      "description": "Handles a matrix right-click event on a given detail panel, preventing the default context menu and managing label help display.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the right-click action."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Prevents the default context menu from appearing.",
+        "Closes any open label help for 'Matrix'.",
+        "Opens label help for 'Matrix' at the event location.",
+        "Clears any existing text selection on the page."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Always returns false to indicate that the default action should not be taken."
+      }
+    },
+    {
+      "name": "handleMouseOut",
+      "namespace": "DEV",
+      "signature": "DEV.handleMouseOut(e)",
+      "description": "Handles the situation where the user clicks on and drags off the detail canvas without releasing the mouse button. It cancels the mouse event being tracked, resets the mouseDown flag, and resets the cursor to default.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The mouse event object."
+        }
+      ],
+      "side_effects": [
+        "Resets the cursor style of the canvas to default.",
+        "Sets the global variable mouseDown to false.",
+        "Sets the global variable mouseEventActive to false."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "isOnObject",
+      "namespace": "None",
+      "signature": "isOnObject(e, type)",
+      "description": "Determines if the cursor is over a specified screen object based on the given event and type.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object containing information about the cursor position."
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "description": "The type of screen object to check against. Possible values are 'map', 'rowClass', and 'colClass'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the cursor is over the specified screen object, otherwise false."
+      }
+    },
+    {
+      "name": "getSamplingRatio",
+      "namespace": "None",
+      "signature": "getSamplingRatio(mode, axis)",
+      "description": "This function returns the appropriate row or column sampling ratio for the heat map based on the provided screen mode and axis.",
+      "parameters": [
+        {
+          "name": "mode",
+          "type": "String",
+          "description": "The screen mode which determines the sampling level. Possible values are 'RIBBONH', 'RIBBONV', 'FULL_MAP', or any other mode which defaults to 'DETAIL_LEVEL'."
+        },
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the sampling ratio is needed. It is used to determine if the ratio should be for rows or columns."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Number",
+        "description": "The sampling ratio for the specified axis and mode."
+      }
+    },
+    {
+      "name": "handleMouseMove",
+      "namespace": "DEV",
+      "signature": "DEV.handleMouseMove(e)",
+      "description": "Handles a user drag event. Determines the type of move (drag-move or drag-select) based on keys pressed and calls the appropriate function to perform the action.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object containing details of the mouse move event."
+        }
+      ],
+      "side_effects": [
+        "Updates the oldMousePos property of the mapItem object.",
+        "Clears the DET.eventTimer timeout.",
+        "Calls DEV.handleSelectDrag(e) if the shift key is pressed and the cursor is on the map.",
+        "Calls DEV.handleMoveDrag(e) if the shift key is not pressed."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "handleMoveDrag",
+      "namespace": "DEV",
+      "signature": "DEV.handleMoveDrag(e)",
+      "description": "Handles a user 'move drag' event on the detail heat map viewport. When the user clicks and drags across the viewport, the current position of the heatmap viewport is updated and the detail heat map is redrawn.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object containing details of the drag event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the cursor style to 'move'.",
+        "Modifies the current row and column of the map item based on the drag distance.",
+        "Updates the drag offset coordinates.",
+        "Calls DVW.checkRow and DVW.checkCol to validate the new row and column.",
+        "Calls SRCH.enableDisableSearchButtons to update the state of search buttons.",
+        "Calls mapItem.updateSelection to redraw the heat map."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "handleSelectDrag",
+      "namespace": "DEV",
+      "signature": "DEV.handleSelectDrag(e)",
+      "description": "Handles a user 'select drag' event on a detail heat map viewport. It calculates the starting and ending row/column positions based on the drag action and updates the search items arrays with these positions. It then redraws the selection marks on the summary heatmap and updates the detail heat map.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the drag action."
+        }
+      ],
+      "side_effects": [
+        "Updates the cursor style of the canvas to 'crosshair'.",
+        "Modifies the search items arrays with the selected row/column positions.",
+        "Redraws the selection marks on the summary heatmap.",
+        "Updates and redraws the detail heat map."
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns false if more than one touch is detected, otherwise no return value."
+      }
+    },
+    {
+      "name": "getRowFromLayerY",
+      "namespace": "DEV",
+      "signature": "DEV.getRowFromLayerY(mapItem, layerY)",
+      "description": "Retrieves the row in the data matrix that matches a given mouse Y-coordinate position (layerY). This function calculates the row based on the provided map item and the Y-coordinate of the mouse event.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the map item, containing properties such as dataBoxHeight, canvas, currentRow, and dataPerCol."
+        },
+        {
+          "name": "layerY",
+          "type": "number",
+          "description": "The Y-coordinate of the mouse event relative to the layer."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The row number in the data matrix that corresponds to the given mouse Y-coordinate."
+      }
+    },
+    {
+      "name": "getColFromLayerX",
+      "namespace": "DEV",
+      "signature": "DEV.getColFromLayerX(mapItem, layerX)",
+      "description": "Calculates the column index in a data grid based on the X-coordinate within a specific layer.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "MapItem",
+          "description": "An object containing properties of the data grid and canvas."
+        },
+        {
+          "name": "layerX",
+          "type": "number",
+          "description": "The X-coordinate within the layer."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The calculated column index within the data grid."
+      }
+    },
+    {
+      "name": "detailDataZoomIn",
+      "namespace": "DEV",
+      "signature": "DEV.detailDataZoomIn(mapItem)",
+      "description": "Handles the processing necessary to zoom inwards on a given heat map panel. It manages the zoom mode history to restore the user-selected mode when zooming in.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the heat map panel, containing properties such as mode, modeHistory, currentRow, currentCol, dataBoxWidth, dataBoxHeight, and methods for updating the selection and setting data sizes."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies mapItem properties such as modeHistory, currentRow, currentCol, selectedStart, selectedStop, saveRow, saveCol, dataBoxWidth, dataBoxHeight.",
+        "Calls functions from UHM, LNK, DET, DEV, and SRCH namespaces to perform various operations like closing help, setting data sizes, and enabling/disabling search buttons."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "detailDataZoomOut",
+      "namespace": "DEV",
+      "signature": "DEV.detailDataZoomOut(mapItem)",
+      "description": "Handles the processing necessary to zoom outwards on a given heat map panel. It adjusts the view based on the current mode and zoom level, and switches to different modes if further zooming out is not possible.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the current state of the heat map panel, including its mode, dimensions, and selection details."
+        }
+      ],
+      "side_effects": [
+        "Updates the modeHistory of mapItem by pushing the current mode and selection details.",
+        "Changes the mode and dimensions of mapItem based on the zoom level and mode.",
+        "Calls various functions to adjust the heat map view and selection.",
+        "Logs an error to the console if an unknown zoom mode is encountered."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Unknown zoom mode",
+          "description": "Logs an error to the console if the mapItem.mode is not recognized."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "detailHRibbonButton",
+      "namespace": "DEV",
+      "signature": "DEV.detailHRibbonButton(mapItem)",
+      "description": "The purpose of this function is to clear dendrogram selections and call processing to change to Horizontal Ribbon Mode.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the map item to be processed."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Clears dendrogram selections for the provided map item.",
+        "Clears mode history for the provided map item.",
+        "Changes the mode to Horizontal Ribbon for the provided map item."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "detailVRibbonButton",
+      "namespace": "DEV",
+      "signature": "DEV.detailVRibbonButton(mapItem)",
+      "description": "The purpose of this function is to clear dendrogram selections and call processing to change to Vertical Ribbon Mode.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item object that will be processed to clear selections and change to Vertical Ribbon Mode."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Clears dendrogram selections for the provided map item.",
+        "Clears mode history for the provided map item.",
+        "Changes the provided map item to Vertical Ribbon Mode."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "labelClick",
+      "namespace": "None",
+      "signature": "labelClick(e)",
+      "description": "Handles a label click event on a detail panel, supporting various click types (standard, shift, ctrl/meta) to manage search results and selections.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the label click."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates search results and selections based on the click type.",
+        "Modifies the DOM to reflect the current search and selection state.",
+        "Clears and updates selection marks and displayed labels."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "labelDrag",
+      "namespace": "None",
+      "signature": "labelDrag(e)",
+      "description": "Handles the dragging of a label on a detail panel, updating the search results and selections accordingly.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the drag action."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the latestLabelTap property of the map item.",
+        "Clears the current text selection.",
+        "Updates the search results and selections based on the drag action.",
+        "Clears the search text input field.",
+        "Displays the cancel button.",
+        "Updates the displayed labels.",
+        "Draws selection marks and top items."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "labelRightClick",
+      "namespace": "None",
+      "signature": "labelRightClick(e)",
+      "description": "Handles a right-click event on a label within a detail panel. It prevents the default context menu from appearing, manages the display of help labels, and clears any text selection.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the right-click action."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Prevents the default context menu from appearing.",
+        "Calls LNK.labelHelpClose(axis) to close any open help labels.",
+        "Calls LNK.labelHelpOpen(axis, e) to open the help label for the right-clicked axis.",
+        "Clears any text selection in the window."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Always returns false to indicate that the default action should not be taken."
+      }
+    },
+    {
+      "name": "createClientButtons",
+      "namespace": "DEV",
+      "signature": "DEV.createClientButtons(mapNumber, paneId, switchToPrimaryFn)",
+      "description": "Creates a set of client buttons for a given map and pane, including zoom, search, and mode buttons. These buttons are used for various interactions such as zooming in/out, switching to primary view, and changing search orientation.",
+      "parameters": [
+        {
+          "name": "mapNumber",
+          "type": "number",
+          "description": "The identifier for the map."
+        },
+        {
+          "name": "paneId",
+          "type": "string",
+          "description": "The identifier for the pane."
+        },
+        {
+          "name": "switchToPrimaryFn",
+          "type": "function",
+          "description": "Callback function to switch to the primary view."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the template and icons for the client buttons."
+      }
+    },
+    {
+      "name": "onmousedown",
+      "namespace": "el",
+      "signature": "el.onmousedown(ev)",
+      "description": "Handles the mousedown event on an element, setting a data attribute on the closest button element to record the time the event occurred.",
+      "parameters": [
+        {
+          "name": "ev",
+          "type": "Event",
+          "description": "The mousedown event object."
+        }
+      ],
+      "side_effects": [
+        "Sets the 'data-mouse-down-time' attribute on the closest button element to the current time in milliseconds."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "el.onclick(ev)",
+      "description": "Handles the click event on an element, stopping the event propagation, identifying the button element, and triggering specific actions based on the button's data attributes and the time since the last mouse down event.",
+      "parameters": [
+        {
+          "name": "ev",
+          "type": "Event",
+          "description": "The event object associated with the click event."
+        }
+      ],
+      "side_effects": [
+        "Stops the propagation of the click event.",
+        "Triggers SRCH.showNextOrientation or SRCH.showOrientDialog based on the button's data attributes and timing."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "findMapItem",
+      "namespace": "None",
+      "signature": "findMapItem(ev)",
+      "description": "This function retrieves a map item based on the event target's pane location.",
+      "parameters": [
+        {
+          "name": "ev",
+          "type": "Event",
+          "description": "The event object containing the target element."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "MapItem",
+        "description": "The map item associated with the pane location of the event target."
+      }
+    },
+    {
+      "name": "srchButton",
+      "namespace": "None",
+      "signature": "srchButton(mapNumber, buttonClass, paneId, rotate, srchFn)",
+      "description": "Creates a new SVG button with specified attributes and attaches a click event handler to it.",
+      "parameters": [
+        {
+          "name": "mapNumber",
+          "type": "number",
+          "description": "The map number associated with the button."
+        },
+        {
+          "name": "buttonClass",
+          "type": "string",
+          "description": "The class to be applied to the button for styling."
+        },
+        {
+          "name": "paneId",
+          "type": "string",
+          "description": "The ID of the pane where the button will be placed."
+        },
+        {
+          "name": "rotate",
+          "type": "string",
+          "description": "The rotation angle to be applied to the SVG element of the button."
+        },
+        {
+          "name": "srchFn",
+          "type": "function",
+          "description": "The function to be called when the button is clicked."
+        }
+      ],
+      "side_effects": [
+        "Attaches a click event handler to the button."
+      ],
+      "returns": {
+        "type": "HTMLElement",
+        "description": "The created SVG button element."
+      }
+    },
+    {
+      "name": "zoomButton",
+      "namespace": "None",
+      "signature": "zoomButton(btnId, btnIcon, clickFn)",
+      "description": "Creates a new SVG button with specified attributes and assigns an ID and click event handler to it.",
+      "parameters": [
+        {
+          "name": "btnId",
+          "type": "String",
+          "description": "The ID to be assigned to the button."
+        },
+        {
+          "name": "btnIcon",
+          "type": "String",
+          "description": "The icon type for the button, used to determine the button's attributes."
+        },
+        {
+          "name": "clickFn",
+          "type": "Function",
+          "description": "The function to be called when the button is clicked."
+        }
+      ],
+      "side_effects": [
+        "Modifies the class list of the button if btnIcon is 'icon-make-primary'."
+      ],
+      "returns": {
+        "type": "HTMLElement",
+        "description": "The newly created SVG button element."
+      }
+    },
+    {
+      "name": "modeButton",
+      "namespace": "None",
+      "signature": "modeButton(mapNumber, paneId, selected, mode, btnHelp, btnSize, clickFn)",
+      "description": "Creates a zoom mode button for a new zoomed view with specific attributes and event handlers.",
+      "parameters": [
+        {
+          "name": "mapNumber",
+          "type": "number",
+          "description": "The number of the new zoomed view."
+        },
+        {
+          "name": "paneId",
+          "type": "string",
+          "description": "The panel ID containing the new zoomed view."
+        },
+        {
+          "name": "selected",
+          "type": "boolean",
+          "description": "Indicates if this button is selected initially."
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "description": "The type of zoom mode set by pressing the button (NORMAL, RIBBONH, RIBBONV)."
+        },
+        {
+          "name": "btnHelp",
+          "type": "string",
+          "description": "Help text to display when the user hovers over the button."
+        },
+        {
+          "name": "btnSize",
+          "type": "string",
+          "description": "Size of the button help text."
+        },
+        {
+          "name": "clickFn",
+          "type": "function",
+          "description": "Function called when the button is clicked."
+        }
+      ],
+      "side_effects": [
+        "Modifies the button's style and attributes.",
+        "Sets event handlers for mouseover, mouseout, and click events."
+      ],
+      "returns": {
+        "type": "HTMLElement",
+        "description": "The created button element."
+      }
+    },
+    {
+      "name": "onmouseout",
+      "namespace": "button",
+      "signature": "button.onmouseout(e)",
+      "description": "This function is an event handler for the 'mouseout' event on a button element. It triggers the UHM.hlpC() function when the mouse pointer leaves the button.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the 'mouseout' event."
+        }
+      ],
+      "side_effects": [
+        "Calls the UHM.hlpC() function."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onmouseover",
+      "namespace": "None",
+      "signature": "button.onmouseover(e)",
+      "description": "This function is an event handler for the 'mouseover' event on a button element. When the mouse pointer moves over the button, it calls the UHM.hlp function with the button, btnHelp, and btnSize as arguments.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the 'mouseover' event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Calls the UHM.hlp function with button, btnHelp, and btnSize as arguments."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "button.onclick(e)",
+      "description": "Handles the click event for a button, retrieves a map item, clears its mode history, and executes a provided click function.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the button click."
+        }
+      ],
+      "side_effects": [
+        "Retrieves a map item using DVW.getMapItemFromPane(paneId).",
+        "Clears the mode history of the retrieved map item using DET.clearModeHistory(mapItem).",
+        "Executes the clickFn function with the retrieved map item as an argument."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buttonBaseName",
+      "namespace": "None",
+      "signature": "buttonBaseName(buttonMode)",
+      "description": "Returns the base name of the zoom mode buttons based on the provided button mode.",
+      "parameters": [
+        {
+          "name": "buttonMode",
+          "type": "String",
+          "description": "The mode of the button, which can be 'RIBBONH', 'RIBBONV', or any other value."
+        }
+      ],
+      "returns": {
+        "type": "String",
+        "description": "The base name of the button corresponding to the provided mode. Returns 'ribbonH' for 'RIBBONH', 'ribbonV' for 'RIBBONV', and 'full' for any other value."
+      }
+    },
+    {
+      "name": "setButtons",
+      "namespace": "None",
+      "signature": "setButtons(mapItem)",
+      "description": "Sets the state of buttons on the detail pane header bar based on the mode of the provided map item.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object containing details about the map item, including its panel number and mode."
+        }
+      ],
+      "side_effects": [
+        "Modifies the class list of button elements in the DOM to reflect their active state."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setActive",
+      "namespace": "None",
+      "signature": "setActive(button, active)",
+      "description": "Sets the active state of a button by adding or removing the 'pressed' class based on the active parameter.",
+      "parameters": [
+        {
+          "name": "button",
+          "type": "HTMLElement",
+          "description": "The button element to be modified."
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "description": "A boolean indicating whether to set the button as active (true) or inactive (false)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the class list of the button element by adding or removing the 'pressed' class."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "zoomAnimation",
+      "namespace": "DEV",
+      "signature": "DEV.zoomAnimation(mapItem, destRow, destCol)",
+      "description": "Performs a zoom animation on a given heat map canvas when users are zooming out. The function calculates the necessary proportions and ratios for the zoom effect and animates the transition.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item object containing details about the heat map and its properties."
+        },
+        {
+          "name": "destRow",
+          "type": "number",
+          "description": "The destination row to zoom into."
+        },
+        {
+          "name": "destCol",
+          "type": "number",
+          "description": "The destination column to zoom into."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Clears and redraws the heat map canvas.",
+        "Updates the zoom level of the heat map.",
+        "Modifies the properties of the mapItem object."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getAnimate",
+      "namespace": "None",
+      "signature": "getAnimate()",
+      "description": "Triggers the animation for a map item to move to a specified destination row and column.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Calls the animate function with mapItem, destRow, and destCol as arguments."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "animate",
+      "namespace": "None",
+      "signature": "animate(mapItem, destRow, destCol)",
+      "description": "Animates the zooming and panning of a heatmap visualization. The function gradually adjusts the zoom level and position of the heatmap based on the provided destination row and column, and updates the display accordingly.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item object containing details about the heatmap and its current state."
+        },
+        {
+          "name": "destRow",
+          "type": "number",
+          "description": "The destination row to which the heatmap should be animated."
+        },
+        {
+          "name": "destCol",
+          "type": "number",
+          "description": "The destination column to which the heatmap should be animated."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the global variable DET.animating to true or false.",
+        "Modifies the global variables animationZoomW and animationZoomH.",
+        "Updates the mapItem's saveRow and saveCol properties.",
+        "Clears the WebGL context and redraws the texture."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "locateHelpBox",
+      "namespace": "None",
+      "signature": "locateHelpBox(helptext, mapItem)",
+      "description": "This function determines and sets the location of a popup help box based on the provided map item and help text element.",
+      "parameters": [
+        {
+          "name": "helptext",
+          "type": "HTMLElement",
+          "description": "The HTML element representing the help box that needs to be positioned."
+        },
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object containing properties related to the map item, including offset and canvas dimensions."
+        }
+      ],
+      "side_effects": [
+        "Modifies the style properties (left and top) of the helptext element to position it on the screen."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}

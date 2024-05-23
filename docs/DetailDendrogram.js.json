@@ -1,0 +1,431 @@
+{
+  "filename": "DetailDendrogram.js",
+  "namespace": "NgChm.DETDDR",
+  "description": [
+    "This module defines properties and methods specific to detail dendrograms, which are linked to summary dendrograms to obtain many of their properties. Detail dendrograms include a zoom level and a view window, displaying only those bars in the summary dendrogram that are at least partially visible in the view window."
+  ],
+  "declares_functions_in": [
+    "DETDDR"
+  ],
+  "interacts_with": [
+    "NgChm.DDR",
+    "NgChm.MAPREP",
+    "NgChm.MMGR",
+    "NgChm.UTIL"
+  ],
+  "classes": [],
+  "member_variables": [],
+  "global_variables": [],
+  "exports": [
+    "DETDDR.DetailColumnDendrogram",
+    "DETDDR.DetailRowDendrogram"
+  ],
+  "functions": [
+    {
+      "name": "DetailDendrogram",
+      "namespace": "None",
+      "signature": "DetailDendrogram(summaryDendrogram, callbacks)",
+      "description": "Defines properties and methods specific to a detail dendrogram. Detail dendrograms (DD) are linked to a summary dendrogram (SD) from which they obtain many of their properties, including the universe of bars and 3N space (spacing between leaves, bar height scale). Properties specific to detail dendrograms include a zoom level and a view window (the DD includes only those bars in the SD that are at least partially visible in the view window).",
+      "parameters": [
+        {
+          "name": "summaryDendrogram",
+          "type": "object",
+          "description": "The summary dendrogram object from which the detail dendrogram derives many properties."
+        },
+        {
+          "name": "callbacks",
+          "type": "object",
+          "description": "An object containing callback functions used for various operations within the detail dendrogram."
+        }
+      ],
+      "side_effects": [
+        "Modifies the zoom level and view window of the detail dendrogram.",
+        "Adds event listeners to the dendrogram canvas for user interactions."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "DetailDendrogram",
+        "description": "An instance of the DetailDendrogram class."
+      }
+    },
+    {
+      "name": "isVisible",
+      "namespace": "None",
+      "signature": "isVisible()",
+      "description": "Determines if the current object is visible based on configuration settings and the presence of a canvas.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the object is visible, otherwise false."
+      }
+    },
+    {
+      "name": "getLocalBarIndex",
+      "namespace": "None",
+      "signature": "getLocalBarIndex(globalIdx, idx)",
+      "description": "Returns the local index of the bar with the specified global index. If the bar does not exist locally, it returns the provided default index.",
+      "parameters": [
+        {
+          "name": "globalIdx",
+          "type": "number",
+          "description": "The global index of the bar to find."
+        },
+        {
+          "name": "idx",
+          "type": "number",
+          "description": "The default index to return if the bar with the specified global index does not exist locally."
+        }
+      ],
+      "side_effects": [
+        "None"
+      ],
+      "error_handling": [
+        {
+          "errorCode": "None",
+          "description": "No specific error handling is implemented."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The local index of the bar with the specified global index, or the default index if the bar does not exist locally."
+      }
+    },
+    {
+      "name": "selectWindowBars",
+      "namespace": "None",
+      "signature": "selectWindowBars()",
+      "description": "Defines and selects the dendrogram bars that are currently within the detail window based on the viewport boundaries.",
+      "parameters": [],
+      "side_effects": [
+        "Modifies this.start3NIndex to set the start index in 3N space.",
+        "Modifies this.stop3NIndex to set the stop index in 3N space.",
+        "Modifies this.heightRatio to set the height scale based on the proportion of leaves in the view.",
+        "Modifies this.dendroViewWidth to set the number of columns in the view in 3N space.",
+        "Modifies this.halfBox to set half the width of a detail element in 3N space.",
+        "Modifies this.windowStartIdx to set the start index of the window.",
+        "Modifies this.windowNumElements to set the number of elements in the window.",
+        "Modifies this.windowBars to filter and set the bars that are within the current detail window.",
+        "Modifies this.barsMaxHeight to force height reselection."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "convertMapIndexTo3NSpace",
+      "namespace": "None",
+      "signature": "convertMapIndexTo3NSpace(index)",
+      "description": "Converts a given map index to a 3N space coordinate.",
+      "parameters": [
+        {
+          "name": "index",
+          "type": "number",
+          "description": "The map index to be converted."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The corresponding 3N space coordinate."
+      }
+    },
+    {
+      "name": "setZoomLevel",
+      "namespace": "None",
+      "signature": "setZoomLevel(zoomLevel)",
+      "description": "Sets the zoom level for the view. If a valid zoom level is provided, it updates the zoom level and marks the zoom as initialized.",
+      "parameters": [
+        {
+          "name": "zoomLevel",
+          "type": "number",
+          "description": "The desired zoom level to set. If undefined, the zoom level will not be changed."
+        }
+      ],
+      "side_effects": [
+        "Updates the zoomLevel property of the object.",
+        "Sets the zoomInitialized property of the object to true."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "buildView",
+      "namespace": "None",
+      "signature": "buildView()",
+      "description": "This function builds the view by selecting and filtering bars within the visible window. It adjusts the zoom level to ensure a sufficient number of bars are visible and recalculates the scaled view if necessary.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies this.bars to contain the filtered bars within the visible window.",
+        "Sets this.dendroViewHeight to the maximum visible bar height.",
+        "Sets this.zoomInitialized to true after initialization.",
+        "Modifies this.zoomLevel if not enough bars are visible.",
+        "Sets this.scaledView to null to force recalculation."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getScaledView",
+      "namespace": "None",
+      "signature": "getScaledView()",
+      "description": "Creates a scaled view of the detail window as bars within the unit square [0..1) x [0..1). Recalculates if there is no scaled view or if the selected bars have changed, affecting bar thickness.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Updates this.scaledViewSelectedBarsCheck with the current selected bars.",
+        "Updates this.scaledView with the new scaled view of bars."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of objects representing the bars in the scaled view, each with properties: left, right, height, leftBot, rightBot, and thickness."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "onclick(e)",
+      "description": "Sets up an event listener for the 'click' event on the dendroCanvas element, which triggers the click method when a click event occurs.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object representing the click event."
+        }
+      ],
+      "side_effects": [
+        "Sets an event listener on the dendroCanvas element."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "ontouchmove",
+      "namespace": "None",
+      "signature": "ontouchmove(e)",
+      "description": "Handles the touch move event on the dendroCanvas element by invoking the scroll method.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The touch move event object."
+        }
+      ],
+      "side_effects": [
+        "Modifies the dendroCanvas element's ontouchmove event handler to call the scroll method."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "ontouchend",
+      "namespace": "None",
+      "signature": "ontouchend(e)",
+      "description": "Handles the touch end event on the dendroCanvas element by delegating to the touchEnd method.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The touch end event object."
+        }
+      ],
+      "side_effects": [
+        "Modifies the behavior of the dendroCanvas element by setting its ontouchend event handler."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "scroll",
+      "namespace": "None",
+      "signature": "scroll(e)",
+      "description": "Handles scroll and touch events to adjust the zoom level of an element. It prevents the default scrolling behavior and stops event propagation. The function calculates the change in touch or scroll position to determine the zoom delta, adjusts the zoom level accordingly, and redraws the element.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object representing the scroll or touch event."
+        }
+      ],
+      "side_effects": [
+        "Modifies this.zoomLevel based on the scroll or touch input.",
+        "Calls this.draw() to redraw the element with the new zoom level."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "touchEnd",
+      "namespace": "None",
+      "signature": "touchEnd(e)",
+      "description": "Handles the end of a touch event by resetting the last touch location to null.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The touch event object."
+        }
+      ],
+      "side_effects": [
+        "Resets the lastTouchLoc property of the object to null."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "click",
+      "namespace": "None",
+      "signature": "click(e)",
+      "description": "Handles click events on a detailed dendrogram, converting canvas coordinates to application coordinates, checking for hits on the dendrogram, and updating the selection and view accordingly.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the click event."
+        }
+      ],
+      "side_effects": [
+        "Updates the selection in the summary dendrogram.",
+        "Triggers search results change callback.",
+        "Redraws the dendrogram view."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "draw",
+      "namespace": "None",
+      "signature": "draw()",
+      "description": "This function checks if the current object is visible and, if so, builds and draws the view for the object.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the view by calling buildView() and drawView() methods."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "DetailColumnDendrogram",
+      "namespace": "DETDDR",
+      "signature": "DETDDR.DetailColumnDendrogram(mapItem, dendroCanvas, summaryDendro, callbacks)",
+      "description": "Creates a detailed column dendrogram for a given map item. This function initializes the dendrogram by setting up the visible region and calling necessary constructors.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item containing details about the heat map and its current state."
+        },
+        {
+          "name": "dendroCanvas",
+          "type": "object",
+          "description": "The canvas element where the dendrogram will be drawn."
+        },
+        {
+          "name": "summaryDendro",
+          "type": "object",
+          "description": "The summary dendrogram object that provides context for the detailed dendrogram."
+        },
+        {
+          "name": "callbacks",
+          "type": "object",
+          "description": "An object containing callback functions for various dendrogram events."
+        }
+      ],
+      "side_effects": [
+        "Initializes the visible region of the dendrogram based on the mapItem state.",
+        "Calls constructors for DDR.Dendrogram, DDR.ColumnDendrogram, and DetailDendrogram."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An instance of the DetailColumnDendrogram class."
+      }
+    },
+    {
+      "name": "getWindow",
+      "namespace": "None",
+      "signature": "getWindow()",
+      "description": "Returns an object representing the window configuration based on the state of the mapItem. If mapItem is undefined, it returns an empty object. If mapItem is in FULL_MAP mode, it returns the start index and the number of elements based on the heat map's number of columns. Otherwise, it returns the current column and the number of data per row.",
+      "parameters": [],
+      "side_effects": [],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the window configuration. The object has properties startIdx and numElements."
+      }
+    },
+    {
+      "name": "DetailRowDendrogram",
+      "namespace": "DETDDR",
+      "signature": "DETDDR.DetailRowDendrogram(mapItem, dendroCanvas, summaryDendro, callbacks)",
+      "description": "Creates a detailed row dendrogram visualization based on the provided map item, canvas, summary dendrogram, and callbacks.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the map item, which includes details about the current mode and data."
+        },
+        {
+          "name": "dendroCanvas",
+          "type": "object",
+          "description": "The canvas element where the dendrogram will be drawn."
+        },
+        {
+          "name": "summaryDendro",
+          "type": "object",
+          "description": "An object representing the summary dendrogram."
+        },
+        {
+          "name": "callbacks",
+          "type": "object",
+          "description": "An object containing callback functions for various events."
+        }
+      ],
+      "side_effects": [
+        "Initializes the dendrogram visualization on the provided canvas.",
+        "Calls constructors of DDR.Dendrogram, DDR.RowDendrogram, and DetailDendrogram."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An instance of the DetailRowDendrogram class."
+      }
+    },
+    {
+      "name": "getWindow",
+      "namespace": "None",
+      "signature": "getWindow()",
+      "description": "Returns an object representing the window configuration based on the state of the mapItem. If mapItem is undefined, returns an empty object. If mapItem is in FULL_MAP mode, returns the start index and number of elements based on the heat map. Otherwise, returns the current row and data per column.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the window configuration. The object has different properties based on the state of mapItem."
+      }
+    }
+  ]
+}

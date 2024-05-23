@@ -1,0 +1,187 @@
+{
+  "filename": "NGCHM_Embed.js",
+  "namespace": [],
+  "description": [
+    "This script provides functionality to embed an NG-CHM (Next Generation Clustered Heat Map) into a web page. It includes the main function embedNGCHM for embedding the heat map, as well as helper functions for setting parameters and setting up the iframe."
+  ],
+  "declares_functions_in": [
+    "embedNGCHM",
+    "embedNGCHM.setParameters",
+    "embedNGCHM.setUpFrame"
+  ],
+  "interacts_with": [],
+  "classes": [],
+  "member_variables": [],
+  "global_variables": [
+    {
+      "name": "sequenceNo",
+      "description": "A counter to keep track of the number of embedded maps."
+    },
+    {
+      "name": "iframeInfo",
+      "description": "An object to store information about each iframe needed by the embedded map callback."
+    },
+    {
+      "name": "defaultParams",
+      "description": "Default parameters for configuring the embedded maps."
+    }
+  ],
+  "exports": [
+    "embedNGCHM"
+  ],
+  "functions": [
+    {
+      "name": "embedNGCHM",
+      "namespace": "None",
+      "signature": "embedNGCHM(selector, srcType, srcSpec, params = {})",
+      "description": "The principal exported function used to load the embedded NG-CHM (Next Generation Clustered Heat Map). This function embeds an NG-CHM into a specified DOM element, allowing for multiple embedded maps within a single page.",
+      "parameters": [
+        {
+          "name": "selector",
+          "type": "String",
+          "description": "A document.querySelector that identifies the DOM element in which to embed the NGCHM."
+        },
+        {
+          "name": "srcType",
+          "type": "String",
+          "description": "Type of NGCHM source to use. Only implemented value is 'base64' for a base-64 encoded blob."
+        },
+        {
+          "name": "srcSpec",
+          "type": "String",
+          "description": "Specifies where to get the embedded NGCHM. Value depends on srcType. For 'base64', it is the base-64 encoded blob."
+        },
+        {
+          "name": "params",
+          "type": "Object",
+          "description": "Overrides defaultParams for this specific embedded NGCHM only (optional)."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the DOM by appending an iframe to the specified parent element.",
+        "Increments the global sequenceNo variable.",
+        "Modifies the global iframeInfo object."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "SelectorNotFound",
+          "description": "Alerts the user if the specified selector does not match any DOM element."
+        },
+        {
+          "errorCode": "SourceNotSpecified",
+          "description": "Alerts the user if no source file is specified for the embedded NGCHM."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "S",
+      "namespace": "None",
+      "signature": "S(a, b = \"\")",
+      "description": "This function writes a script tag with the provided attributes and content to the document.",
+      "parameters": [
+        {
+          "name": "a",
+          "type": "string",
+          "description": "The attributes to be included in the script tag."
+        },
+        {
+          "name": "b",
+          "type": "string",
+          "description": "The content to be included inside the script tag. Defaults to an empty string."
+        }
+      ],
+      "side_effects": [
+        "Writes a script tag to the document."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getParentFromSelector",
+      "namespace": "None",
+      "signature": "getParentFromSelector(selector)",
+      "description": "Retrieves the parent element based on the provided selector. If the selector is already an Element, it returns the selector itself. Otherwise, it attempts to find the element using `querySelector` or `getElementById`.",
+      "parameters": [
+        {
+          "name": "selector",
+          "type": "Element | String",
+          "description": "The selector used to find the parent element. It can be an Element or a string representing a CSS selector or an element ID."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Element | null",
+        "description": "The parent element if found, otherwise null."
+      }
+    },
+    {
+      "name": "setParameters",
+      "namespace": "embedNGCHM",
+      "signature": "embedNGCHM.setParameters(params = {})",
+      "description": "Auxiliary function to override default parameters for all subsequent calls to embedNGCHM.",
+      "parameters": [
+        {
+          "name": "params",
+          "type": "object",
+          "description": "An object containing key-value pairs to override the default parameters."
+        }
+      ],
+      "side_effects": [
+        "Modifies the global defaultParams object by updating its properties with the provided key-value pairs."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setUpFrame",
+      "namespace": "embedNGCHM",
+      "signature": "embedNGCHM.setUpFrame(iframeName)",
+      "description": "Support function to set up the embedded iframe after the NGCHM widget has loaded. The user of this module should not call this function directly.",
+      "parameters": [
+        {
+          "name": "iframeName",
+          "type": "String",
+          "description": "The name of the iframe to set up."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Logs errors and warnings to the console.",
+        "Displays an alert for unknown types of embedded NGCHM."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "NgChm not found on iframe",
+          "description": "Logs an error to the console and returns if the NgChm object is not found on the iframe."
+        },
+        {
+          "errorCode": "Cannot find NG-CHM widget interface",
+          "description": "Logs an error to the console and returns if neither API nor UTIL interfaces are found on the NgChm object."
+        },
+        {
+          "errorCode": "Using deprecated NG-CHM widget interface",
+          "description": "Logs a warning to the console if the deprecated UTIL interface is used instead of the API interface."
+        },
+        {
+          "errorCode": "Unknown type of embedded NGCHM",
+          "description": "Displays an alert if the srcType of the embedded NGCHM is unknown."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}

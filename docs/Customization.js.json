@@ -1,0 +1,480 @@
+{
+  "filename": "Customization.js",
+  "namespace": "NgChm.CUST",
+  "description": [
+    "This module defines facilities for customizing an NG-CHM via 'plugins'. It builds on the linkouts machinery defined in Linkouts.js using the linkouts interface."
+  ],
+  "declares_functions_in": [
+    "CUST"
+  ],
+  "interacts_with": [
+    "NgChm.UHM",
+    "NgChm.MMGR",
+    "NgChm.CFG"
+  ],
+  "classes": [],
+  "member_variables": [
+    {
+      "name": "CUST.allTypes",
+      "description": "List of all unique types."
+    },
+    {
+      "name": "CUST.customPlugins",
+      "description": "List of custom plugins."
+    },
+    {
+      "name": "CUST.linkoutTypes",
+      "description": "List of linkout types."
+    },
+    {
+      "name": "CUST.subTypes",
+      "description": "Map from each type to all of its subtypes."
+    },
+    {
+      "name": "CUST.superTypes",
+      "description": "Map from each type to all of its supertypes."
+    },
+    {
+      "name": "CUST.transforms",
+      "description": "List of transforms to apply to types."
+    },
+    {
+      "name": "CUST.verbose",
+      "description": "Flag for verbose logging."
+    }
+  ],
+  "global_variables": [],
+  "exports": [
+    "CUST.addCustomJS",
+    "CUST.addExtraCustomJS",
+    "CUST.beforeLoadCustom",
+    "CUST.definePluginLinkouts",
+    "CUST.waitForPlugins",
+    "addSubtype",
+    "describeTypes"
+  ],
+  "functions": [
+    {
+      "name": "separator",
+      "namespace": "None",
+      "signature": "separator(sep)",
+      "description": "Returns a specific separator character based on the input string. If the input string does not match any predefined separators, it returns the input string itself. Logs a message if the input string is unrecognized and the verbose mode is enabled.",
+      "parameters": [
+        {
+          "name": "sep",
+          "type": "string",
+          "description": "A string representing the type of separator. Can be 'space', 'colon', 'comma', 'semicolon', 'slash', 'tilde', 'exclamation', 'hash', 'amp', 'plus', 'minus', 'dash', 'underscore', 'equals', 'period', or any single character."
+        }
+      ],
+      "side_effects": [
+        "Logs a message to the console if the input string is unrecognized and the verbose mode is enabled."
+      ],
+      "returns": {
+        "type": "string",
+        "description": "The corresponding separator character or the input string if it does not match any predefined separators."
+      }
+    },
+    {
+      "name": "addTransform",
+      "namespace": "None",
+      "signature": "addTransform(typename)",
+      "description": "Parses the transform specifications on a label type and appends a vector of transforms to apply to CUST.transforms. This function supports 'list' and 'replace' transforms.",
+      "parameters": [
+        {
+          "name": "typename",
+          "type": "String",
+          "description": "The label type which may include one or more transforms appended to a primitive type name."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies CUST.transforms by appending a new transform object."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "BadlyFormedTypeModifier",
+          "description": "Logs an error message if a 'replace' transform is badly formed."
+        },
+        {
+          "errorCode": "UnknownTypeModifier",
+          "description": "Logs an error message if an unknown type modifier is encountered."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "doTypeTransform",
+      "namespace": "None",
+      "signature": "doTypeTransform(transform, menuEntry, linkoutType, selectMode, linkoutFn, attributes)",
+      "description": "This function adds a linkout transformation based on the provided type transformation configuration. It checks if the linkoutType matches the baseType of the transformation or its supertypes, and if so, it adds a linkout entry with the specified menu entry, type name, and selection mode. The function also applies specified transformations to the labels before invoking the linkout function.",
+      "parameters": [
+        {
+          "name": "transform",
+          "type": "object",
+          "description": "An object containing the baseType, typeName, and transformation configurations (xforms)."
+        },
+        {
+          "name": "menuEntry",
+          "type": "string",
+          "description": "The menu entry name for the linkout."
+        },
+        {
+          "name": "linkoutType",
+          "type": "string",
+          "description": "The type of linkout to be added."
+        },
+        {
+          "name": "selectMode",
+          "type": "string",
+          "description": "The selection mode for the linkout (e.g., SINGLE_SELECT)."
+        },
+        {
+          "name": "linkoutFn",
+          "type": "function",
+          "description": "A callback function to be invoked with the transformed labels."
+        },
+        {
+          "name": "attributes",
+          "type": "object",
+          "description": "Additional attributes for the linkout."
+        }
+      ],
+      "side_effects": [
+        "Adds a linkout entry to the linkouts object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "initLabelTypes",
+      "namespace": "None",
+      "signature": "initLabelTypes(typeList)",
+      "description": "Initializes label types by categorizing them into superTypes and subTypes, ensuring all types are unique, and setting up transformations.",
+      "parameters": [
+        {
+          "name": "typeList",
+          "type": "Array",
+          "description": "An array of label types to be initialized."
+        }
+      ],
+      "side_effects": [
+        "Initializes CUST.superTypes as an empty object.",
+        "Initializes CUST.subTypes as an empty object.",
+        "Sets CUST.allTypes to a unique list of types from typeList.",
+        "Initializes CUST.transforms as an empty array.",
+        "Calls addTransform for each type in CUST.allTypes."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "describeTypes",
+      "namespace": "None",
+      "signature": "describeTypes(typelist)",
+      "description": "Adds type descriptions from the provided typelist to the CUST.linkoutTypes array for use in the NG-CHM viewer and builder.",
+      "parameters": [
+        {
+          "name": "typelist",
+          "type": "Array",
+          "description": "A list of type descriptors. Each type descriptor is an object with the following fields: typeName (mandatory), description (mandatory), displayName (optional), format (optional), examples (optional)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the CUST.linkoutTypes array by appending each type descriptor from the typelist."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addSubtype",
+      "namespace": "None",
+      "signature": "addSubtype(subtype, supertype)",
+      "description": "Adds a subtype-supertype relationship between the given subtype and supertype. It ensures that no circular relationships are created and updates the global CUST object to maintain the mappings of subtypes and supertypes.",
+      "parameters": [
+        {
+          "name": "subtype",
+          "type": "String",
+          "description": "The subtype to be added."
+        },
+        {
+          "name": "supertype",
+          "type": "String",
+          "description": "The supertype to which the subtype will be added."
+        }
+      ],
+      "side_effects": [
+        "Updates the global CUST.subTypes and CUST.superTypes objects with the new subtype-supertype relationship."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "CycleDetected",
+          "description": "Logs a message and returns if adding the subtype-supertype relationship would create a cycle."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "createPluginLinkout",
+      "namespace": "None",
+      "signature": "createPluginLinkout(menuEntry, typeName, selectMode, linkoutFn, attributes)",
+      "description": "Creates a plugin linkout for a specified menu entry, type, and selection mode. It wraps the provided linkout function with additional checks based on the selection mode and adds the linkout to the system. It also applies type transformations and handles subtypes.",
+      "parameters": [
+        {
+          "name": "menuEntry",
+          "type": "String",
+          "description": "The menu entry to which the linkout will be added."
+        },
+        {
+          "name": "typeName",
+          "type": "String",
+          "description": "The type name for the linkout."
+        },
+        {
+          "name": "selectMode",
+          "type": "String",
+          "description": "The selection mode, which can be SINGLE_SELECT or MULTI_SELECT."
+        },
+        {
+          "name": "linkoutFn",
+          "type": "Function",
+          "description": "The function to be executed for the linkout."
+        },
+        {
+          "name": "attributes",
+          "type": "Object",
+          "description": "Additional attributes for the linkout."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Logs messages to the console if CUST.verbose is true.",
+        "Displays system messages using UHM.systemMessage.",
+        "Adds linkouts using linkouts.addLinkout.",
+        "Applies type transformations using CUST.transforms.",
+        "Handles subtypes for the provided typeName."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Unknown selectMode",
+          "description": "Logs an error message to the console if the selectMode is not recognized."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "beforeLoadCustom",
+      "namespace": "CUST",
+      "signature": "CUST.beforeLoadCustom(heatMap)",
+      "description": "Executed before custom.js is loaded. This function initializes label types for columns and rows in the heatMap and logs the types if verbose mode is enabled.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "An object representing the heat map, which contains methods to get column and row labels."
+        }
+      ],
+      "side_effects": [
+        "Initializes CUST.customPlugins as an empty array.",
+        "Initializes CUST.linkoutTypes as an empty array.",
+        "Calls initLabelTypes with concatenated column and row label types.",
+        "Logs column and row types to the console if CUST.verbose is true."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "waitForPlugins",
+      "namespace": "CUST",
+      "signature": "CUST.waitForPlugins(callback)",
+      "description": "This function ensures that the provided callback is executed only after all plugins have been loaded. If the plugins are already loaded, the callback is executed immediately. Otherwise, the callback is added to a queue to be executed once the plugins are loaded.",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "function",
+          "description": "The function to be executed once all plugins are loaded."
+        }
+      ],
+      "side_effects": [
+        "Modifies the pluginsLoadedCallbacks array by adding the callback if plugins are not yet loaded."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "definePluginLinkouts",
+      "namespace": "CUST",
+      "signature": "CUST.definePluginLinkouts()",
+      "description": "This function iterates over custom plugins defined in the CUST namespace and sets up linkouts and matrix linkouts for each plugin. It also executes any waiting callbacks once all plugins have been processed.",
+      "parameters": [],
+      "side_effects": [
+        "Modifies the global variable pluginsLoaded to true.",
+        "Executes and removes callbacks from the global pluginsLoadedCallbacks array."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addCustomJS",
+      "namespace": "CUST",
+      "signature": "CUST.addCustomJS()",
+      "description": "Loads the user's custom JavaScript file and initializes it. If a custom script is specified in the configuration, it loads that script; otherwise, it defaults to a predefined custom.js file. It also ensures that the custom script is properly loaded and handles any errors during the loading process.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Appends a script element to the head of the document.",
+        "Calls CUST.beforeLoadCustom with the heatMap object.",
+        "Calls CUST.definePluginLinkouts after the script is loaded or if an error occurs."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "script.onerror",
+          "description": "Logs a warning message to the console if the custom script fails to load and calls CUST.definePluginLinkouts."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "initScript",
+      "namespace": "None",
+      "signature": "initScript()",
+      "description": "Initializes and loads a custom script defined in the configuration. Handles different browser compatibility issues and error scenarios.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Sets the type and source of the script element.",
+        "Calls CUST.definePluginLinkouts() on successful load or error.",
+        "Logs a warning message if the script fails to load."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "script.onerror",
+          "description": "Logs a warning message and calls CUST.definePluginLinkouts() if the script fails to load."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onreadystatechange",
+      "namespace": "script",
+      "signature": "script.onreadystatechange()",
+      "description": "This function is an event handler for the 'readystatechange' event of a script element. It checks if the script's readyState is 'complete' and, if so, calls the CUST.definePluginLinkouts() function.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Calls the CUST.definePluginLinkouts() function when the script's readyState is 'complete'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onerror",
+      "namespace": "script",
+      "signature": "script.onerror()",
+      "description": "Handles errors that occur during the loading of a script. Logs a warning message and defines plugin linkouts.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Logs a warning message to the console.",
+        "Calls CUST.definePluginLinkouts() to define plugin linkouts."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addExtraCustomJS",
+      "namespace": "CUST",
+      "signature": "CUST.addExtraCustomJS(customJs)",
+      "description": "Loads a user-specified JavaScript file into the document's head section and defines plugin linkouts. Handles loading errors and ensures compatibility with Internet Explorer.",
+      "parameters": [
+        {
+          "name": "customJs",
+          "type": "string",
+          "description": "The URL of the custom JavaScript file to be loaded."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Appends a new script element to the document's head section.",
+        "Calls CUST.definePluginLinkouts upon successful or failed loading of the script."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "script.onerror",
+          "description": "Logs a warning message to the console if the script fails to load and calls CUST.definePluginLinkouts."
+        },
+        {
+          "errorCode": "script.onreadystatechange",
+          "description": "Ensures compatibility with Internet Explorer by calling CUST.definePluginLinkouts when the script's readyState is 'complete'."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onerror",
+      "namespace": "script",
+      "signature": "script.onerror()",
+      "description": "Handles errors that occur during the loading of a script and defines plugin linkouts.",
+      "parameters": [],
+      "side_effects": [
+        "Logs a warning message to the console.",
+        "Calls the CUST.definePluginLinkouts() function."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onreadystatechange",
+      "namespace": "None",
+      "signature": "script.onreadystatechange()",
+      "description": "Handles the state change of a script element, specifically for Internet Explorer. When the script's readyState becomes 'complete', it calls the CUST.definePluginLinkouts function.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Calls CUST.definePluginLinkouts() when the script's readyState is 'complete'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}

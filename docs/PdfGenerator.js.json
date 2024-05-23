@@ -1,0 +1,1716 @@
+{
+  "filename": "PdfGenerator.js",
+  "namespace": "NgChm.PDF",
+  "description": [
+    "This module is responsible for generating PDF documents from heat map data. It provides functionalities to configure PDF settings, generate PDF documents, and handle various components such as legends, summary views, and detail views. The module interacts with other namespaces to fetch data and render the heat map components into the PDF."
+  ],
+  "declares_functions_in": [
+    "PDF",
+    "getPdfDocument"
+  ],
+  "interacts_with": [
+    "NgChm.UTIL",
+    "NgChm.MAPREP",
+    "NgChm.MMGR",
+    "NgChm.CMM",
+    "NgChm.UHM",
+    "NgChm.SUM",
+    "NgChm.DVW",
+    "NgChm.DET",
+    "NgChm.DEV",
+    "NgChm.SRCHSTATE",
+    "NgChm.Pane"
+  ],
+  "classes": [
+    {
+      "name": "PdfError",
+      "description": "A custom error class for handling PDF generation errors."
+    }
+  ],
+  "member_variables": [
+    {
+      "name": "PDF.rowDendoWidth",
+      "description": "Width of the row dendrogram in the PDF."
+    },
+    {
+      "name": "PDF.rowDendroHeight",
+      "description": "Height of the row dendrogram in the PDF."
+    },
+    {
+      "name": "PDF.colDendroWidth",
+      "description": "Width of the column dendrogram in the PDF."
+    },
+    {
+      "name": "PDF.colDendroHeight",
+      "description": "Height of the column dendrogram in the PDF."
+    },
+    {
+      "name": "PDF.isWidget",
+      "description": "Flag indicating if the PDF is generated in widget mode."
+    },
+    {
+      "name": "PDF.ngchmLogo",
+      "description": "Data URL for the NG-CHM logo to be included in the PDF."
+    }
+  ],
+  "global_variables": [],
+  "exports": [
+    "PDF.canGeneratePdf",
+    "PDF.pdfDialogClosed",
+    "PDF.openPdfPrefs",
+    "pdfCancelButton",
+    "getViewerHeatmapPDF",
+    "generatePDF",
+    "getPdfDocument",
+    "setPadding",
+    "addPageIfNeeded",
+    "calcLongestLabelUnits",
+    "setTopItemsSizing",
+    "setSummaryDendroDimensions",
+    "setSummaryClassDimensions",
+    "setSummaryHeatmapDimensions",
+    "W",
+    "H",
+    "createHeader",
+    "isChecked",
+    "CovariateBarLegends",
+    "initLegends",
+    "addLegendPages",
+    "drawDataDistributionPlot",
+    "getDataMatrixDistributionPlot",
+    "drawRowClassLegends",
+    "drawColClassLegends",
+    "drawLegendSubSectionHeader",
+    "getBarGraphForDiscreteClassBar",
+    "getBarGraphForContinuousClassBar",
+    "setClassBarFigureH",
+    "drawMissingColor",
+    "adjustForNextClassBar",
+    "getNextLineClassBarFigureH",
+    "getThreshMaxLength",
+    "isLastClassBarToBeDrawn",
+    "drawSummaryHeatMapPage",
+    "drawSummaryTopItemLabels",
+    "addDetailPage",
+    "drawDetailSelectionsAndLabels",
+    "drawDetailSelectionBoxes",
+    "calcRowLabelPosn",
+    "calcColLabelPosn",
+    "drawDetailLabels",
+    "getFontSizeForLabels",
+    "calcPageHeaderHeight",
+    "createDataURLFromRenderBuffer",
+    "isPdfProgressBarVisible"
+  ],
+  "functions": [
+    {
+      "name": "onloadend",
+      "namespace": "None",
+      "signature": "reader.onloadend()",
+      "description": "This function is triggered when the reading operation is completed. It assigns the result of the reader to the ngchmLogo property of the PDF object.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the PDF.ngchmLogo property by setting it to the result of the reader."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "canGeneratePdf",
+      "namespace": "PDF",
+      "signature": "PDF.canGeneratePdf()",
+      "description": "Determines if a PDF can be generated based on the visibility of certain elements.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if either SUM.isVisible() or DVW.anyVisible() is true, otherwise returns false."
+      }
+    },
+    {
+      "name": "pdfDialogClosed",
+      "namespace": "PDF",
+      "signature": "PDF.pdfDialogClosed()",
+      "description": "Checks if the PDF preferences dialog is currently closed.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the PDF preferences dialog is closed (i.e., has the 'hide' class), otherwise false."
+      }
+    },
+    {
+      "name": "openPdfPrefs",
+      "namespace": "PDF",
+      "signature": "PDF.openPdfPrefs(e)",
+      "description": "Opens the PDF preferences panel and sets up the options based on the visibility of summary and detail maps. Displays appropriate messages if the panel cannot be opened.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "HTMLElement",
+          "description": "The HTML element that triggers the opening of the PDF preferences panel."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Closes the menu and help context.",
+        "Displays system messages if the panel cannot be opened.",
+        "Updates the state of the PDF generation options based on the visibility of summary and detail maps.",
+        "Modifies the DOM to show the PDF preferences panel and positions it appropriately."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "inconsistent visibility check",
+          "description": "Displays a system message indicating that the PDF cannot be generated due to inconsistent visibility checks."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "updateShowBounds",
+      "namespace": "None",
+      "signature": "updateShowBounds()",
+      "description": "This function updates the state of the 'showBounds' checkbox based on the state of the 'bothButton' checkbox. If 'bothButton' is checked, 'showBounds' will be checked and enabled. Otherwise, 'showBounds' will be unchecked and disabled.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the 'checked' and 'disabled' properties of the 'showBounds' checkbox element."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "pdfCancelButton",
+      "namespace": "None",
+      "signature": "pdfCancelButton()",
+      "description": "This function closes the PDF preferences panel when the user presses the cancel button. It hides the error message, re-enables the PDF menu, hides the preferences panel, resets the cursor, and focuses on the primary map canvas if it exists.",
+      "parameters": [],
+      "side_effects": [
+        "Hides the PDF error message by setting its display style to 'none'.",
+        "Removes the 'disabled' class from the PDF menu.",
+        "Adds the 'hide' class to the PDF preferences panel.",
+        "Resets the cursor style to 'default'.",
+        "Focuses on the primary map canvas if it exists."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "constructor",
+      "namespace": "PdfError",
+      "signature": "PdfError:constructor(message)",
+      "description": "Constructor for the PdfError class, a subtype of Error for issues that are detected specifically related to PDF processing.",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "String",
+          "description": "The error message that provides details about the PDF-related issue."
+        }
+      ],
+      "returns": {
+        "type": "PdfError",
+        "description": "An instance of the PdfError class."
+      }
+    },
+    {
+      "name": "getViewerHeatmapPDF",
+      "namespace": "None",
+      "signature": "getViewerHeatmapPDF(heatMap)",
+      "description": "This function is called when the 'create pdf' button is pressed. Its main job is to update the UI when starting PDF generation and resetting it after PDF generation completes. It also initiates saving of the complete PDF, if one is generated, and displaying an error message dialog if an error occurred.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heatmap object for which the PDF is to be generated."
+        }
+      ],
+      "called_urls": [
+        "https://github.com/MD-Anderson-Bioinformatics/NG-CHM/issues?q=is%3Aissue+is%3Aopen+pdf+-label%3Aenhancement"
+      ],
+      "side_effects": [
+        "Changes the cursor to 'wait' during PDF generation and resets it to 'default' after completion.",
+        "Disables the 'create PDF' button during PDF generation and re-enables it after completion.",
+        "Displays and updates a progress bar during PDF generation.",
+        "Handles and displays error messages if PDF generation fails."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "PdfError",
+          "description": "Handles PdfError by checking if the error message is blank and prevents further user notification if it is."
+        },
+        {
+          "errorCode": "Error",
+          "description": "Handles general errors by logging the error and displaying a detailed error message to the user, including a hint for large maps and a link to the issue page."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "generatePDF",
+      "namespace": "None",
+      "signature": "generatePDF(heatMap)",
+      "description": "Generate a PDF document using the jsPDF library based on the provided heat map data. The function handles the creation of summary and detail maps, as well as legends, and returns a Promise that resolves to the generated PDF document.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heat map data used to generate the PDF document."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the display style of the element with id 'pdfErrorMessage'.",
+        "Updates the value of the progress bar element with id 'pdfProgressBar'."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "PdfError",
+          "description": "Rejects the Promise with a PdfError if PDF generation is canceled."
+        },
+        {
+          "errorCode": "Error",
+          "description": "Rejects the Promise with an error if any job function fails."
+        }
+      ],
+      "returns": {
+        "type": "Promise<jsPDF>",
+        "description": "A Promise that resolves to the generated PDF document."
+      }
+    },
+    {
+      "name": "updateProgress",
+      "namespace": "None",
+      "signature": "updateProgress()",
+      "description": "Updates the progress bar based on the number of completed jobs.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the value of the progress bar element with id 'pdfProgressBar'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "doNextJob",
+      "namespace": "None",
+      "signature": "function doNextJob()",
+      "description": "Executes the next job in the drawJobs queue. If there are no jobs left, it resolves the pdfDoc promise. If there are jobs, it processes the next job and updates the UI between jobs. Handles errors and allows for cancellation of the PDF generation process.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the UI between jobs.",
+        "Modifies the drawJobs queue by removing the first job.",
+        "Updates the progress of the job execution."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Error",
+          "description": "Rejects the promise with the caught error if an error is detected during job execution."
+        },
+        {
+          "errorCode": "PdfError",
+          "description": "Rejects the promise with a PdfError if the PDF generation is cancelled."
+        }
+      ],
+      "returns": {
+        "type": "Promise",
+        "description": "Resolves with pdfDoc if all jobs are completed successfully, otherwise rejects with an error."
+      }
+    },
+    {
+      "name": "addSummaryPage",
+      "namespace": "None",
+      "signature": "addSummaryPage(pdfDoc)",
+      "description": "Adds a summary page to the provided PDF document. This function creates a new Promise that draws a summary heat map page on the PDF document and resolves the Promise once the drawing is complete.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object to which the summary page will be added."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A Promise that resolves once the summary page has been successfully added to the PDF document."
+      }
+    },
+    {
+      "name": "addLegendPages",
+      "namespace": "None",
+      "signature": "addLegendPages(pdfDoc)",
+      "description": "Adds legend pages to the provided PDF document by utilizing the CovariateBarLegends class.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "PDFDocument",
+          "description": "The PDF document to which legend pages will be added."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array of pages that have been added to the PDF document."
+      }
+    },
+    {
+      "name": "onchange",
+      "namespace": "pdfResolution",
+      "signature": "pdfResolution.onchange(e)",
+      "description": "Handles the change event for the PDF resolution dropdown. It shows or hides the custom resolution input fields based on the selected value.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object representing the change event."
+        }
+      ],
+      "side_effects": [
+        "Modifies the visibility of the custom resolution label and input fields.",
+        "Enables or disables the create PDF button."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onchange",
+      "namespace": "pdfCustomResolution",
+      "signature": "pdfCustomResolution.onchange(e)",
+      "description": "Handles the change event for the pdfCustomResolution element. If the selected resolution is 'custom', it triggers the checkResolution function.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object associated with the change event."
+        }
+      ],
+      "side_effects": [
+        "Triggers the checkResolution function if the pdfResolution value is 'custom'."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "checkResolution",
+      "namespace": "None",
+      "signature": "function checkResolution()",
+      "description": "Validates the custom DPI value entered by the user and enables or disables the PDF creation button based on the validity of the DPI value.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the 'disabled' property of the createPdfButton element.",
+        "Sets the 'dataset.disabledReason' property of the createPdfButton element.",
+        "Changes the background color of the pdfCustomResolution element."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getPdfDocument",
+      "namespace": "None",
+      "signature": "getPdfDocument(heatMap)",
+      "description": "This function creates and configures a jsPDF Document object based on user-selected options from the UI. It sets the paper size, resolution, orientation, font style, and other properties for the PDF document.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "The heatMap object that will be included in the PDF document."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the paperSize, resolution, paperOrientation, showDetailBounds, fontStyle, doc, heatMap, firstPage, pageHeight, pageWidth, pageHeaderHeight, paddingLeft, and paddingTop properties of the object."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "NaN",
+          "description": "If the resolution is not a number, a warning is logged and the resolution defaults to 600 dpi."
+        }
+      ],
+      "returns": {
+        "type": "object",
+        "description": "A configured jsPDF Document object."
+      }
+    },
+    {
+      "name": "setPadding",
+      "namespace": "None",
+      "signature": "setPadding(left, top)",
+      "description": "Sets the padding values for the left and top sides. If the provided values are falsy, the existing padding values are retained.",
+      "parameters": [
+        {
+          "name": "left",
+          "type": "number",
+          "description": "The padding value for the left side. If falsy, the existing left padding value is retained."
+        },
+        {
+          "name": "top",
+          "type": "number",
+          "description": "The padding value for the top side. If falsy, the existing top padding value is retained."
+        }
+      ],
+      "side_effects": [
+        "Modifies the paddingLeft property of the current object.",
+        "Modifies the paddingTop property of the current object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addPageIfNeeded",
+      "namespace": "None",
+      "signature": "addPageIfNeeded()",
+      "description": "Adds a new page to the PDF document unless it is the first time the function is called.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the 'firstPage' property of the object.",
+        "Adds a new page to the 'doc' property of the object."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "calcLongestLabelUnits",
+      "namespace": "None",
+      "signature": "calcLongestLabelUnits(doc, allLabels, axis, fontSize)",
+      "description": "This function calculates the longest label units to actual length. It is used to determine the bottom and left padding space for the detail Heat Map.",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object",
+          "description": "The document object that provides the method to get string unit width."
+        },
+        {
+          "name": "allLabels",
+          "type": "array",
+          "description": "An array of label elements to be evaluated."
+        },
+        {
+          "name": "axis",
+          "type": "string",
+          "description": "The axis ('x' or 'y') to filter the labels."
+        },
+        {
+          "name": "fontSize",
+          "type": "number",
+          "description": "The font size used to calculate the label width."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The longest label length multiplied by a factor of 1.05."
+      }
+    },
+    {
+      "name": "setTopItemsSizing",
+      "namespace": "None",
+      "signature": "setTopItemsSizing(doc, maxFontSize)",
+      "description": "This function calculates the proper PDF display dimensions for row and column top items. This calculation includes both the top items 'lines' canvas and the area required for displaying top item labels.",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object",
+          "description": "The PDF document object used to measure string widths."
+        },
+        {
+          "name": "maxFontSize",
+          "type": "number",
+          "description": "The maximum font size to be used for calculating the dimensions."
+        }
+      ],
+      "side_effects": [
+        "Modifies the dimensions of the top items in the PDF document."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the calculated dimensions for top items, including 'topItemsWidth', 'topItemsHeight', 'rowTopItemsLength', and 'colTopItemsLength'."
+      }
+    },
+    {
+      "name": "setSummaryDendroDimensions",
+      "namespace": "None",
+      "signature": "setSummaryDendroDimensions(sumImgW, sumImgH, rowTopItemsLength, colTopItemsLength)",
+      "description": "This function calculates the proper PDF display dimensions for the Summary page dendrograms. Since one dimension of each is determined by the heat map width/height, only row dendro width and column dendro height need to be calculated. Both the parameters and the return values are in document units.",
+      "parameters": [
+        {
+          "name": "sumImgW",
+          "type": "number",
+          "description": "The width of the summary image in document units."
+        },
+        {
+          "name": "sumImgH",
+          "type": "number",
+          "description": "The height of the summary image in document units."
+        },
+        {
+          "name": "rowTopItemsLength",
+          "type": "number",
+          "description": "The length of the top items in the row dendrogram."
+        },
+        {
+          "name": "colTopItemsLength",
+          "type": "number",
+          "description": "The length of the top items in the column dendrogram."
+        }
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the calculated width and height for the row and column dendrograms respectively.",
+        "properties": {
+          "rowDendroWidth": {
+            "type": "number",
+            "description": "The calculated width of the row dendrogram in document units."
+          },
+          "colDendroHeight": {
+            "type": "number",
+            "description": "The calculated height of the column dendrogram in document units."
+          }
+        }
+      }
+    },
+    {
+      "name": "setSummaryClassDimensions",
+      "namespace": "None",
+      "signature": "setSummaryClassDimensions(sumImgW, sumImgH, rowTopItemsLength, colTopItemsLength)",
+      "description": "This function calculates the proper PDF display dimensions for the Summary page class bars. Since one dimension of each is determined by the heat map width/height, only row class width and column class height need to be calculated. Both the parameters and the return values are in document units.",
+      "parameters": [
+        {
+          "name": "sumImgW",
+          "type": "number",
+          "description": "The width of the summary image in document units."
+        },
+        {
+          "name": "sumImgH",
+          "type": "number",
+          "description": "The height of the summary image in document units."
+        },
+        {
+          "name": "rowTopItemsLength",
+          "type": "number",
+          "description": "The length of the top items in the row in document units."
+        },
+        {
+          "name": "colTopItemsLength",
+          "type": "number",
+          "description": "The length of the top items in the column in document units."
+        }
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the calculated row class width and column class height in document units.",
+        "properties": {
+          "rowClassWidth": {
+            "type": "number",
+            "description": "The calculated width of the row class bar."
+          },
+          "colClassHeight": {
+            "type": "number",
+            "description": "The calculated height of the column class bar."
+          }
+        }
+      }
+    },
+    {
+      "name": "setSummaryHeatmapDimensions",
+      "namespace": "None",
+      "signature": "setSummaryHeatmapDimensions(sumImgW, sumImgH, rowTopItemsLength, colTopItemsLength)",
+      "description": "This function calculates the proper display dimensions for the Summary Heat Map page.",
+      "parameters": [
+        {
+          "name": "sumImgW",
+          "type": "number",
+          "description": "The width of the summary image."
+        },
+        {
+          "name": "sumImgH",
+          "type": "number",
+          "description": "The height of the summary image."
+        },
+        {
+          "name": "rowTopItemsLength",
+          "type": "number",
+          "description": "The length of the top items in the row."
+        },
+        {
+          "name": "colTopItemsLength",
+          "type": "number",
+          "description": "The length of the top items in the column."
+        }
+      ],
+      "side_effects": [
+        "Modifies the dimensions of the summary heatmap based on the input parameters."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the calculated width and height of the summary heatmap."
+      }
+    },
+    {
+      "name": "W",
+      "namespace": "None",
+      "signature": "W(element)",
+      "description": "Returns the width of the given HTML element in pixels by extracting and converting the width from the element's inline style.",
+      "parameters": [
+        {
+          "name": "element",
+          "type": "HTMLElement",
+          "description": "The HTML element whose width is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The width of the element in pixels."
+      }
+    },
+    {
+      "name": "H",
+      "namespace": "None",
+      "signature": "H(element)",
+      "description": "Returns the height of the given HTML element in pixels by extracting and converting the height from the element's inline style.",
+      "parameters": [
+        {
+          "name": "element",
+          "type": "HTMLElement",
+          "description": "The HTML element whose height is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The height of the element in pixels."
+      }
+    },
+    {
+      "name": "createHeader",
+      "namespace": "None",
+      "signature": "createHeader(titleText, options = {})",
+      "description": "This function sets up the PDF page header bar used on all of the PDF pages. It includes the MDAnderson logo, the heat map name, and a red divider line at the top of each page. It adjusts the font size and position of the title and subtitle to fit within the header space.",
+      "parameters": [
+        {
+          "name": "titleText",
+          "type": "String",
+          "description": "The main title text to be displayed in the header."
+        },
+        {
+          "name": "options",
+          "type": "Object",
+          "description": "Optional parameters for additional customization. Can include 'subTitle' and 'contText'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the PDF document by adding a header with a logo, title, subtitle, and a red divider line."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "isChecked",
+      "namespace": "None",
+      "signature": "isChecked(el)",
+      "description": "This function checks if a checkbox or radio button with a given ID is checked.",
+      "parameters": [
+        {
+          "name": "el",
+          "type": "String",
+          "description": "The ID of the checkbox or radio button element to check."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the element is checked, otherwise false."
+      }
+    },
+    {
+      "name": "CovariateBarLegends",
+      "namespace": "None",
+      "signature": "CovariateBarLegends(pdfDoc)",
+      "description": "This function initializes a CovariateBarLegends object with a given PDF document.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "Object",
+          "description": "The PDF document object to be associated with the CovariateBarLegends instance."
+        }
+      ],
+      "returns": {
+        "type": "CovariateBarLegends",
+        "description": "An instance of the CovariateBarLegends class."
+      }
+    },
+    {
+      "name": "initLegends",
+      "namespace": "None",
+      "signature": "initLegends()",
+      "description": "Initializes the legend pages for a PDF document by adding legend pages for row and column covariate bars, and a data matrix distribution plot. It extends the CovariateBarLegends prototype with the addLegendPages function.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the CovariateBarLegends prototype by adding the addLegendPages function.",
+        "Resets the top and left coordinates of the PDF document.",
+        "Draws various legends and plots on the PDF document."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves when the legend pages have been successfully added."
+      }
+    },
+    {
+      "name": "addLegendPages",
+      "namespace": "None",
+      "signature": "addLegendPages()",
+      "description": "Adds legend pages to a PDF document by setting up and drawing class bar legends and data distribution plots.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the padding and coordinates of the PDF document.",
+        "Draws row and column classification legends on the PDF document."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves when the legend pages have been successfully added."
+      }
+    },
+    {
+      "name": "drawDataDistributionPlot",
+      "namespace": "None",
+      "signature": "drawDataDistributionPlot(pdfDoc, barsInfo)",
+      "description": "This function draws the matrix data distribution plot on the legend page of a PDF document.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object where the plot will be drawn."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the bars to be plotted, including the section header."
+        }
+      ],
+      "side_effects": [
+        "Modifies the sectionHeader property of the barsInfo object.",
+        "Adds a new page to the PDF document if needed.",
+        "Creates a header in the PDF document.",
+        "Sets the font size and style for the PDF document."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "The result of the getDataMatrixDistributionPlot function, which generates the data matrix distribution plot."
+      }
+    },
+    {
+      "name": "getDataMatrixDistributionPlot",
+      "namespace": "None",
+      "signature": "getDataMatrixDistributionPlot(pdfDoc, barsInfo)",
+      "description": "This function creates the distribution plot for the legend page by analyzing the data matrix and generating a histogram or square plot based on the provided PDF document and bar information.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "An object containing the PDF document and heat map data."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the bars to be plotted, including options and styling details."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves when the distribution plot is fully created and added to the PDF document."
+      }
+    },
+    {
+      "name": "drawRowClassLegends",
+      "namespace": "None",
+      "signature": "drawRowClassLegends(pdfDoc, barsInfo)",
+      "description": "This function draws the legend blocks for each row covariate bar on the heat map to the PDF legends page.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object where the legends will be drawn."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the bars to be drawn, including configuration and data."
+        }
+      ],
+      "side_effects": [
+        "Modifies barsInfo.leftOff to reset the left offset.",
+        "Modifies barsInfo.topOff to move the next figure to the line below.",
+        "Resets barsInfo.classBarFigureH to 0."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawColClassLegends",
+      "namespace": "None",
+      "signature": "drawColClassLegends(pdfDoc, barsInfo)",
+      "description": "This function draws the legend blocks for each column covariate bar on the heat map to the PDF legends page.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object where the legends will be drawn."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the bars to be drawn, including configuration and data."
+        }
+      ],
+      "side_effects": [
+        "Modifies barsInfo.topOff to adjust the position for the next figure.",
+        "Modifies barsInfo.classBarFigureH to reset the class bar height."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawLegendSubSectionHeader",
+      "namespace": "None",
+      "signature": "drawLegendSubSectionHeader(pdfDoc, barsInfo, categories, key)",
+      "description": "This function draws a bolded sub-section header on the legend page(s). If the next group of legends breaks across a page boundary, a new page is created.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object used for drawing the legend."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "Information about the bars, including dimensions and offsets."
+        },
+        {
+          "name": "categories",
+          "type": "number",
+          "description": "The number of categories to be displayed in the legend."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "description": "The title or key for the sub-section header."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the topOff and leftOff properties of barsInfo.",
+        "May add a new page to the PDF document."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "getBarGraphForDiscreteClassBar",
+      "namespace": "None",
+      "signature": "getBarGraphForDiscreteClassBar(pdfDoc, key, type, barsInfo, classBarConfig, classBarData)",
+      "defined_section": "FUNCTION - getBarGraphForDiscreteClassBar",
+      "description": "This function generates a bar graph for a discrete class bar in a PDF document. It adjusts the layout and scales the bars based on the orientation of the PDF (portrait or landscape). It handles multi-line titles, adjusts for missing values, and ensures the graph fits within the page boundaries.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object containing methods and properties for PDF manipulation."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "description": "The title or key for the bar graph."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "The type of the bar graph."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the bar graph layout and configuration."
+        },
+        {
+          "name": "classBarConfig",
+          "type": "object",
+          "description": "Configuration settings for the class bar."
+        },
+        {
+          "name": "classBarData",
+          "type": "object",
+          "description": "Data for the class bar, including values and other relevant information."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the layout and position of the bar graph in the PDF document.",
+        "May add a new page to the PDF document if the current page does not have enough space.",
+        "Adjusts the location for the next class bar figure."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getBarGraphForContinuousClassBar",
+      "namespace": "None",
+      "signature": "getBarGraphForContinuousClassBar(pdfDoc, key, type, barsInfo, classBarConfig, classBarData)",
+      "defined_section": "FUNCTION - getBarGraphForContinousClassBar",
+      "description": "This function generates a bar graph for continuous class bars in a PDF document. It places the class bar legend using the variables leftOff and topOff, which are updated after every class bar legend. The function handles multi-line covariate headers, adjusts for page overflow, and calculates the counts for each threshold bucket. It also handles missing values and adjusts the layout for the next class bar.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object containing the document and heat map."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "description": "The key representing the class bar."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "The type of the class bar."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "Information about the bars including layout and styling details."
+        },
+        {
+          "name": "classBarConfig",
+          "type": "object",
+          "description": "Configuration settings for the class bar."
+        },
+        {
+          "name": "classBarData",
+          "type": "object",
+          "description": "Data for the class bar including values and other relevant information."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Adds new pages to the PDF document if needed.",
+        "Updates the layout variables leftOff and topOff.",
+        "Logs warnings for bad continuous covariate values."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setClassBarFigureH",
+      "namespace": "None",
+      "signature": "setClassBarFigureH(barsInfo, threshCount, type, isMissing)",
+      "description": "This function sets the classification bar figure height for the class bar legend page. It adjusts the height based on the type of data (discrete or continuous), the threshold count, and whether there are missing values.",
+      "parameters": [
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the class bar legend, including the current figure height and text size."
+        },
+        {
+          "name": "threshCount",
+          "type": "number",
+          "description": "The threshold count used to determine the number of bars if the type is discrete."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "The type of data, either 'discrete' or 'continuous'."
+        },
+        {
+          "name": "isMissing",
+          "type": "number",
+          "description": "A flag indicating whether there are missing values (1 if missing values exist, 0 otherwise)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the classBarFigureH property of the barsInfo object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawMissingColor",
+      "namespace": "None",
+      "signature": "drawMissingColor(pdfDoc, barsInfo, bartop, barHeight, missingCount, maxCount, maxLabelLength, threshMaxLen, totalValues)",
+      "description": "This function draws a missing value bar on a PDF document. It adjusts the bar's width and position based on the provided data and configuration options.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object where the bar will be drawn."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "Information and configuration options for the bars, including dimensions and text sizes."
+        },
+        {
+          "name": "bartop",
+          "type": "number",
+          "description": "The top position of the bar on the PDF document."
+        },
+        {
+          "name": "barHeight",
+          "type": "number",
+          "description": "The height of the bar."
+        },
+        {
+          "name": "missingCount",
+          "type": "number",
+          "description": "The count of missing values to be represented by the bar."
+        },
+        {
+          "name": "maxCount",
+          "type": "number",
+          "description": "The maximum count of values, used to scale the bar width."
+        },
+        {
+          "name": "maxLabelLength",
+          "type": "number",
+          "description": "The maximum length of the label text."
+        },
+        {
+          "name": "threshMaxLen",
+          "type": "number",
+          "description": "The threshold maximum length for the bar."
+        },
+        {
+          "name": "totalValues",
+          "type": "number",
+          "description": "The total number of values, used to calculate the percentage of missing values."
+        }
+      ],
+      "side_effects": [
+        "Draws a rectangle and text on the provided PDF document."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "adjustForNextClassBar",
+      "namespace": "None",
+      "signature": "adjustForNextClassBar(pdfDoc, barsInfo, key, type, maxLabelLength)",
+      "description": "This function sets the positioning for the next class bar to be drawn in a PDF document. It adjusts the horizontal and vertical offsets to ensure that the class bar fits within the page dimensions, and if necessary, it creates a new page.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "PDFDocument",
+          "description": "The PDF document object where the class bar will be drawn."
+        },
+        {
+          "name": "barsInfo",
+          "type": "BarsInfo",
+          "description": "An object containing information about the current state and dimensions of the class bars."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "description": "A key identifying the specific class bar."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "The type of the class bar."
+        },
+        {
+          "name": "maxLabelLength",
+          "type": "number",
+          "description": "The maximum length of the label for the class bar."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies barsInfo.leftOff, barsInfo.topSkip, barsInfo.covTitleRows, barsInfo.topOff, barsInfo.classBarHeaderHeight, and barsInfo.classBarFigureH.",
+        "Calls pdfDoc.addPageIfNeeded() to add a new page if the class bar exceeds the page height.",
+        "Calls pdfDoc.createHeader() to create a header on the new page."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getNextLineClassBarFigureH",
+      "namespace": "None",
+      "signature": "getNextLineClassBarFigureH(pdfDoc, barsInfo, key, type)",
+      "description": "This function is used to determine the height of the next few class bars when a new line of class bar legends needs to be drawn.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object containing the heat map and document properties."
+        },
+        {
+          "name": "barsInfo",
+          "type": "object",
+          "description": "An object containing information about the class bars, including dimensions and text sizes."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "description": "The key identifying the current class bar."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "The type of classification, either 'col' for column or 'row' for row."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The height of the next line of class bars based on the maximum threshold count and legend text size."
+      }
+    },
+    {
+      "name": "getThreshMaxLength",
+      "namespace": "None",
+      "signature": "getThreshMaxLength(thresholds, fontSize)",
+      "description": "This function calculates the maximum length of threshold labels used in creating the legends page(s). It ensures that the length accounts for the 'Missing Values' label if it is shorter than 13 characters.",
+      "parameters": [
+        {
+          "name": "thresholds",
+          "type": "Array",
+          "description": "An array of threshold labels."
+        },
+        {
+          "name": "fontSize",
+          "type": "Number",
+          "description": "The font size used for the threshold labels."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Number",
+        "description": "The maximum length of the threshold labels adjusted for font size."
+      }
+    },
+    {
+      "name": "isLastClassBarToBeDrawn",
+      "namespace": "None",
+      "signature": "isLastClassBarToBeDrawn(heatMap, classBar, type)",
+      "description": "Checks if the given class bar is the last one to be drawn in the heat map. This is used to determine if a new page should be added when drawing class bars.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heat map object containing classification orders."
+        },
+        {
+          "name": "classBar",
+          "type": "String",
+          "description": "The class bar to check."
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "description": "The type of classification ('col' for column or 'row' for row)."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the class bar is the last one to be drawn, otherwise false."
+      }
+    },
+    {
+      "name": "drawSummaryHeatMapPage",
+      "namespace": "None",
+      "signature": "drawSummaryHeatMapPage(pdfDoc, showDetailViewBounds)",
+      "description": "This function outputs the summary view page of the heat map to the PDF document. It includes the heat map, dendrograms, class bars, and top item labels. Optionally, it can also add green outlines of the detail views if showDetailViewBounds is true.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "PDFDocument",
+          "description": "The PDF document object where the summary heat map page will be drawn."
+        },
+        {
+          "name": "showDetailViewBounds",
+          "type": "boolean",
+          "description": "Flag indicating whether to show the green outlines of the detail views on the summary view page."
+        }
+      ],
+      "side_effects": [
+        "Modifies the pdfDoc by adding a new page with the summary heat map and optional detail view bounds."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawSummaryTopItemLabels",
+      "namespace": "None",
+      "signature": "drawSummaryTopItemLabels(pdfDoc, axis, vp)",
+      "description": "This function draws the labels for the top items on the specified axis of the summary page in a PDF document.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "The PDF document object where the labels will be drawn."
+        },
+        {
+          "name": "axis",
+          "type": "string",
+          "description": "The axis ('row' or 'col') on which the top items are located."
+        },
+        {
+          "name": "vp",
+          "type": "object",
+          "description": "The viewport object containing the dimensions and position for drawing the labels."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the font size of the PDF document.",
+        "Logs debug information to the console if debug mode is enabled."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addDetailPage",
+      "namespace": "None",
+      "signature": "addDetailPage(pdfDoc, mapItem)",
+      "description": "This function draws a detailed heat map onto a PDF page, including various elements such as dendrograms, covariate bars, and labels. It handles the layout and rendering of these elements, ensuring they are properly scaled and positioned within the PDF document.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "PDFDocument",
+          "description": "The PDF document object where the detail page will be added."
+        },
+        {
+          "name": "mapItem",
+          "type": "MapItem",
+          "description": "The map item containing data and configurations for rendering the detail heat map."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the pdfDoc by adding a new page and rendering various elements onto it."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves when the detail page has been fully rendered and added to the PDF document."
+      }
+    },
+    {
+      "name": "drawDetailSelectionsAndLabels",
+      "namespace": "None",
+      "signature": "function drawDetailSelectionsAndLabels(pdfDoc, mapItem, mapItemVars)",
+      "description": "This function draws selection boxes and labels on a PDF document. It first draws the selection boxes to ensure they do not overlap with the text, and then it draws the labels over any selection boxes present.",
+      "parameters": [
+        {
+          "name": "pdfDoc",
+          "type": "object",
+          "description": "An object representing the PDF document, including the document itself and font style."
+        },
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "An object representing the map item to be drawn on the PDF."
+        },
+        {
+          "name": "mapItemVars",
+          "type": "object",
+          "description": "An object containing variables related to the map item."
+        }
+      ],
+      "side_effects": [
+        "Modifies the PDF document by drawing selection boxes and labels."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawDetailSelectionBoxes",
+      "namespace": "None",
+      "signature": "drawDetailSelectionBoxes(doc, mapItem, mapItemVars)",
+      "description": "This function draws selection boxes and highlights selected label boxes on the detail heat map page. It ensures that the selection boxes do not overlap with the text by drawing them first. The function uses the selection color of the current data layer for highlighting.",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object",
+          "description": "The document object used for drawing the selection boxes."
+        },
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item containing label elements and heat map data."
+        },
+        {
+          "name": "mapItemVars",
+          "type": "object",
+          "description": "Variables related to the map item, such as label font size and longest label units."
+        }
+      ],
+      "side_effects": [
+        "Draws selection boxes on the document object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "calcRowLabelPosn",
+      "namespace": "None",
+      "signature": "calcRowLabelPosn(mapItem, mapItemVars, label, labelFontSize)",
+      "description": "Calculates the best x and y PDF coordinates for a label based on its position in the mapItem (in window coordinates) relative to the mapItem canvas (in window coordinates), scaling the difference to PDF coordinates, and adding it to the image position (in PDF coordinates).",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item containing the canvas and other elements."
+        },
+        {
+          "name": "mapItemVars",
+          "type": "object",
+          "description": "Variables related to the map item, including dimensions and scaling ratios."
+        },
+        {
+          "name": "label",
+          "type": "object",
+          "description": "The label element whose position is being calculated."
+        },
+        {
+          "name": "labelFontSize",
+          "type": "number",
+          "description": "The font size of the label."
+        }
+      ],
+      "side_effects": [
+        "Adjusts the y-coordinate by decrementing it by 1 if the label's id contains 'legendDet'."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the calculated x and y PDF coordinates for the label."
+      }
+    },
+    {
+      "name": "calcColLabelPosn",
+      "namespace": "None",
+      "signature": "calcColLabelPosn(mapItem, mapItemVars, label, labelFontSize)",
+      "description": "Calculates the position of a column label on a PDF document based on the provided map item and its variables.",
+      "parameters": [
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item containing the canvas and other related properties."
+        },
+        {
+          "name": "mapItemVars",
+          "type": "object",
+          "description": "Variables related to the map item, including ratios and dimensions."
+        },
+        {
+          "name": "label",
+          "type": "object",
+          "description": "The label element whose position is to be calculated."
+        },
+        {
+          "name": "labelFontSize",
+          "type": "number",
+          "description": "The font size of the label."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the calculated x and y positions of the label."
+      }
+    },
+    {
+      "name": "drawDetailLabels",
+      "namespace": "None",
+      "signature": "drawDetailLabels(doc, mapItem, mapItemVars)",
+      "description": "This function draws various labels onto a heat map page, including row labels, column labels, and covariate labels.",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object",
+          "description": "The document object where the labels will be drawn."
+        },
+        {
+          "name": "mapItem",
+          "type": "object",
+          "description": "The map item containing label elements and font settings."
+        },
+        {
+          "name": "mapItemVars",
+          "type": "object",
+          "description": "Additional variables related to the map item, including label font sizes."
+        }
+      ],
+      "side_effects": [
+        "Draws text labels on the provided document object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawLabels",
+      "namespace": "None",
+      "signature": "drawLabels(rowLabels, rowLabelFont, colLabels, colLabelFont)",
+      "description": "Draws row and column labels on a document using specified fonts for each. The function calculates the positions for each label and renders them on the document.",
+      "parameters": [
+        {
+          "name": "rowLabels",
+          "type": "Array",
+          "description": "An array of row label elements to be drawn."
+        },
+        {
+          "name": "rowLabelFont",
+          "type": "Number",
+          "description": "Font size to be used for row labels."
+        },
+        {
+          "name": "colLabels",
+          "type": "Array",
+          "description": "An array of column label elements to be drawn."
+        },
+        {
+          "name": "colLabelFont",
+          "type": "Number",
+          "description": "Font size to be used for column labels."
+        }
+      ],
+      "side_effects": [
+        "Modifies the document by drawing text at calculated positions."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getFontSizeForLabels",
+      "namespace": "None",
+      "signature": "getFontSizeForLabels(rowLabels, rowLabelFont, colLabels, colLabelFont)",
+      "description": "Determines the font size for labels based on the provided row and column label fonts. It returns the smallest font size that is visible for the labels.",
+      "parameters": [
+        {
+          "name": "rowLabels",
+          "type": "Array",
+          "description": "An array of row labels."
+        },
+        {
+          "name": "rowLabelFont",
+          "type": "Number",
+          "description": "The font size for the row labels."
+        },
+        {
+          "name": "colLabels",
+          "type": "Array",
+          "description": "An array of column labels."
+        },
+        {
+          "name": "colLabelFont",
+          "type": "Number",
+          "description": "The font size for the column labels."
+        }
+      ],
+      "returns": {
+        "type": "Number",
+        "description": "The smallest font size that is visible for the labels."
+      }
+    },
+    {
+      "name": "calcPageHeaderHeight",
+      "namespace": "None",
+      "signature": "calcPageHeaderHeight()",
+      "description": "Calculates the height of the header on each page by adding a base height to the height of the logo element if it exists.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The total height of the page header in pixels."
+      }
+    },
+    {
+      "name": "createDataURLFromRenderBuffer",
+      "namespace": "None",
+      "signature": "createDataURLFromRenderBuffer(renderBuffer)",
+      "description": "Creates a data URL from the image in the provided renderBuffer. This function uses a temporary canvas element, copies the image to the canvas using WebGL, and then converts the image in the canvas to a data URL.",
+      "parameters": [
+        {
+          "name": "renderBuffer",
+          "type": "RenderBuffer",
+          "description": "The render buffer containing the image to be converted to a data URL."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "string",
+        "description": "A data URL representing the image in the render buffer."
+      }
+    },
+    {
+      "name": "isPdfProgressBarVisible",
+      "namespace": "None",
+      "signature": "isPdfProgressBarVisible()",
+      "description": "Checks if the PDF progress bar is currently visible on the webpage.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the PDF progress bar is visible, otherwise false."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "onclick(event)",
+      "description": "Handles the click event for the 'prefCancel_btn' button. If the PDF progress bar is visible, it cancels the PDF generation process, disables the button, and changes the opacity of the progress bar. Otherwise, it calls the pdfCancelButton function.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object associated with the click event."
+        }
+      ],
+      "side_effects": [
+        "Sets cancelPdfGeneration to true if the PDF progress bar is visible.",
+        "Disables the 'prefCancel_btn' button if the PDF progress bar is visible.",
+        "Changes the opacity of the 'pdfProgressBarDiv' to 0.5 if the PDF progress bar is visible."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "onclick(event)",
+      "description": "Handles the click event for the element with ID 'prefCreate_btn' and generates a heatmap PDF.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object associated with the click event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Triggers the generation of a heatmap PDF by calling getViewerHeatmapPDF with the heatmap data from MMGR.getHeatMap()."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onclick",
+      "namespace": "None",
+      "signature": "onclick(event)",
+      "description": "This function is an event handler for the 'onclick' event of the element with the ID 'menuPdf'. It opens PDF preferences using the PDF.openPdfPrefs method.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "Event",
+          "description": "The event object associated with the 'onclick' event."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Calls PDF.openPdfPrefs with the event target and null as arguments."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}

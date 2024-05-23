@@ -1,0 +1,3840 @@
+{
+  "filename": "MatrixManager.js",
+  "namespace": "NgChm.MMGR",
+  "description": [
+    "MatrixManager is responsible for retrieving clustered heat maps. Currently, the system supports only a single HeatMap at a time. Create it by calling MMGR.createHeatMap and retrieve it at a later time by calling MMGR.getHeatMap.",
+    "HeatMaps provide a vast number of methods for accessing map configuration, covariate data, and other data.",
+    "HeatMaps optionally contain data for multiple layers at a variety of summarization levels. Clients can access HeatMap data via one or more AccessWindows. An AccessWindow describes the data layer, level, and rows and columns that the client wants access to. AccessWindows are the basis for managing asynchronous data retrieval and caching."
+  ],
+  "declares_functions_in": [
+    "MMGR",
+    "HeatMap"
+  ],
+  "interacts_with": [
+    "NgChm.UTIL",
+    "NgChm.FLICK",
+    "NgChm.MAPREP",
+    "NgChm.CFG",
+    "NgChm.CMM",
+    "NgChm.UHM",
+    "NgChm.CM"
+  ],
+  "classes": [
+    {
+      "name": "TileWindow",
+      "description": "TileWindows are the middle level of the system's data management hierarchy. They contain hard references to any tile data in the system for the tiles concerned and are used for managing asynchronous data retrieval and caching."
+    },
+    {
+      "name": "TileCache",
+      "description": "The TileCache is the lowest level of the system's data management hierarchy. It contains an entry for every tile accessed by the system and may contain weak references to the tile's data."
+    },
+    {
+      "name": "AccessWindow",
+      "description": "AccessWindows are the highest level of the system's three-tiered data management hierarchy. They specify what region of a HeatMap the client wants to access and manage the requests for any unavailable data tiles."
+    },
+    {
+      "name": "VisibleCovariateBar",
+      "description": "Represents a visible covariate bar on the heat map, including its display parameters and methods for obtaining colors for scatter or bar plots."
+    },
+    {
+      "name": "HeatMapLevel",
+      "description": "Implements support for accessing the HeatMap's data at a specific summarization level. It is concerned with computing the differences in scales and indices between the different levels."
+    }
+  ],
+  "member_variables": [
+    {
+      "name": "MMGR.Event_INITIALIZED",
+      "description": "Event type for when the heat map is initialized."
+    },
+    {
+      "name": "MMGR.Event_JSON",
+      "description": "Event type for when JSON data is loaded."
+    },
+    {
+      "name": "MMGR.Event_NEWDATA",
+      "description": "Event type for when new data is available."
+    },
+    {
+      "name": "MMGR.FILE_SOURCE",
+      "description": "Constant representing the file source type."
+    },
+    {
+      "name": "MMGR.LOCAL_SOURCE",
+      "description": "Constant representing the local source type."
+    },
+    {
+      "name": "MMGR.WEB_SOURCE",
+      "description": "Constant representing the web source type."
+    },
+    {
+      "name": "MMGR.embeddedMapName",
+      "description": "Name of the embedded map, if any."
+    },
+    {
+      "name": "MMGR.localRepository",
+      "description": "Path to the local repository."
+    },
+    {
+      "name": "MMGR.webLoader",
+      "description": "Web worker for handling tile and JSON data requests."
+    }
+  ],
+  "global_variables": [],
+  "exports": [
+    "MMGR.createHeatMap",
+    "MMGR.createWebLoader",
+    "MMGR.getActualLabels",
+    "MMGR.getHeatMap",
+    "MMGR.getLabelText",
+    "MMGR.getShownLabels",
+    "MMGR.initAxisLabels",
+    "MMGR.mapUpdatedOnLoad",
+    "MMGR.showDownloadViewerNotification",
+    "MMGR.webSaveMapProperties",
+    "MMGR.zipAppDownload",
+    "MMGR.zipMapProperties",
+    "MMGR.zipSaveMapProperties"
+  ],
+  "functions": [
+    {
+      "name": "callServlet",
+      "namespace": "None",
+      "signature": "callServlet(verb, url, data)",
+      "description": "Submits a form to a specified URL using the given HTTP verb and optional data. This function dynamically creates a form element, sets its action to the provided URL, and method to the specified HTTP verb. If data is provided, it is added as a textarea element within the form. The form is then appended to the document body and submitted.",
+      "parameters": [
+        {
+          "name": "verb",
+          "type": "string",
+          "description": "The HTTP method to use for the form submission (e.g., 'POST', 'GET')."
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "description": "The URL to which the form will be submitted."
+        },
+        {
+          "name": "data",
+          "type": "string",
+          "description": "Optional data to include in the form submission. This data will be added as a textarea element within the form."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Dynamically creates and submits a form element to the specified URL.",
+        "Appends the created form to the document body."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "createWebLoader",
+      "namespace": "MMGR",
+      "signature": "MMGR.createWebLoader(fileSrc)",
+      "description": "Creates a web worker to handle the loading of JSON data and tiles for a map. This allows large I/O operations to overlap with extended periods of heavy computation by offloading these tasks to a separate thread.",
+      "parameters": [
+        {
+          "name": "fileSrc",
+          "type": "String",
+          "description": "The source of the file, which determines the URL structure for requests."
+        }
+      ],
+      "called_urls": [
+        "baseURL + 'GetMapByName/' + UTIL.mapNameRef",
+        "baseURL + 'GetTile?map=' + mapId + '&datalayer=' + job.layer + '&level=' + job.level + '&tile=' + job.tileName",
+        "baseURL + 'GetDescriptor?map=' + mapId + '&type=' + name",
+        "baseURL + name + '.json'"
+      ],
+      "side_effects": [
+        "Creates a web worker to handle JSON and tile loading.",
+        "Modifies MMGR.webLoader to reference the created web worker.",
+        "Modifies MMGR.webLoader.onmessage to handle incoming messages from the web worker.",
+        "Modifies MMGR.webLoader.setMessageHandler to set a custom message handler for the web worker."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "jsonLoadFailed",
+          "description": "Posts a message indicating that loading a JSON file failed."
+        },
+        {
+          "errorCode": "tileLoadFailed",
+          "description": "Posts a message indicating that loading a tile failed."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "loadTile",
+      "namespace": "None",
+      "signature": "loadTile(job)",
+      "description": "This function loads a tile by making an asynchronous HTTP GET request to a specified URL. It manages the number of active requests and queues additional requests if the maximum number of active requests is reached. Upon completion, it posts a message indicating whether the tile load was successful or failed.",
+      "parameters": [
+        {
+          "name": "job",
+          "type": "object",
+          "description": "An object containing the details of the tile to be loaded."
+        }
+      ],
+      "called_urls": [
+        "tileURL(job)"
+      ],
+      "side_effects": [
+        "Modifies the 'active' variable to track the number of active requests.",
+        "Adds jobs to the 'pending' queue if the maximum number of active requests is reached.",
+        "Posts messages to the main thread indicating the status of the tile load."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "req.status != 200",
+          "description": "If the HTTP request fails (status code is not 200), a message is posted indicating that the tile load failed."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onreadystatechange",
+      "namespace": "None",
+      "signature": "req.onreadystatechange()",
+      "description": "Handles the state change of an XMLHttpRequest, managing the loading of tiles and handling errors.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Decrements the global 'active' counter.",
+        "Modifies the 'pending' array by removing the first element if it has elements.",
+        "Calls the 'loadTile' function with the next pending tile.",
+        "Posts a message to the main thread indicating whether the tile load succeeded or failed."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "req.status != 200",
+          "description": "Posts a message to the main thread indicating that the tile load failed."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "loadJson",
+      "namespace": "None",
+      "signature": "loadJson(name)",
+      "description": "This function loads a JSON file from a specified URL and sends the JSON data to the main thread. If the request fails, it sends a failure message to the main thread.",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "String",
+          "description": "The name of the JSON file to be loaded."
+        }
+      ],
+      "called_urls": [
+        "jsonFileURL(name)"
+      ],
+      "side_effects": [
+        "Sends messages to the main thread using postMessage."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "req.status != 200",
+          "description": "If the HTTP request fails, a message with the operation 'jsonLoadFailed' and the file name is sent to the main thread."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value but sends messages to the main thread."
+      }
+    },
+    {
+      "name": "onreadystatechange",
+      "namespace": "None",
+      "signature": "req.onreadystatechange()",
+      "description": "Handles the state changes of an XMLHttpRequest object and posts messages based on the request's status.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Posts messages to the main thread indicating the success or failure of the JSON load operation."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "handleMessage",
+      "namespace": "None",
+      "signature": "handleMessage(e)",
+      "description": "Handles incoming messages and performs operations based on the message type. It logs the message if debugging is enabled and delegates tasks to specific functions based on the operation specified in the message data.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object containing the message data."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Logs message details to the console if debugging is enabled.",
+        "Calls loadTile function with job data if the operation is 'loadTile'.",
+        "Calls loadJson function with name data if the operation is 'loadJSON'."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getConfigAndData",
+      "namespace": "None",
+      "signature": "getConfigAndData()",
+      "description": "This function retrieves all map configuration data and supporting data (e.g., labels, dendros) from JSON files.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Calls loadJson function to retrieve map configuration data.",
+        "Calls loadJson function to retrieve map supporting data."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return any value."
+      }
+    },
+    {
+      "name": "getMapId",
+      "namespace": "None",
+      "signature": "function getMapId(url)",
+      "description": "Fetches the map ID from the provided URL. If the map is specified by name, it retrieves the map's ID and then fetches the map's configuration and data. If the fetch fails, it sends a failure message.",
+      "parameters": [
+        {
+          "name": "url",
+          "type": "String",
+          "description": "The URL to fetch the map information from."
+        }
+      ],
+      "called_urls": [
+        "url"
+      ],
+      "side_effects": [
+        "Modifies the global variable 'mapId' with the fetched map ID.",
+        "Calls the function 'getConfigAndData()' to fetch the map's configuration and data.",
+        "Sends a message with operation 'jsonLoadFailed' and name 'GetMapByName' if the fetch fails."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "FetchError",
+          "description": "If the fetch request fails or the response status is not 200, a message is posted indicating the failure."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onmessage",
+      "namespace": "MMGR.webLoader",
+      "signature": "onmessage(e)",
+      "description": "Handles incoming messages from a web worker and stores them in a pending messages queue for later processing.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The message event object containing data sent from the web worker."
+        }
+      ],
+      "side_effects": [
+        "Adds the incoming message event to the pendingMessages array."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setMessageHandler",
+      "namespace": "MMGR.webLoader",
+      "signature": "setMessageHandler(mh)",
+      "description": "Sets a message handler function to process pending messages asynchronously and assigns it to handle future messages.",
+      "parameters": [
+        {
+          "name": "mh",
+          "type": "function",
+          "description": "The message handler function to process messages."
+        }
+      ],
+      "side_effects": [
+        "Processes and removes all pending messages from the pendingMessages array.",
+        "Sets MMGR.webLoader.onmessage to the provided message handler function."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getLoaderBaseURL",
+      "namespace": "None",
+      "signature": "getLoaderBaseURL(fileSrc)",
+      "description": "Determines the base URL for loading resources based on the source type. If the source is a web source, it constructs an absolute URL using the document's origin and a configuration API path. If the source is local, it constructs a URL using the local repository and embedded map name.",
+      "parameters": [
+        {
+          "name": "fileSrc",
+          "type": "String",
+          "description": "The source type of the file, which determines how the base URL is constructed."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Logs the file source to the console if it is not a web source."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "String",
+        "description": "The constructed base URL for loading resources."
+      }
+    },
+    {
+      "name": "connectWebLoader",
+      "namespace": "None",
+      "signature": "connectWebLoader(heatMap, addMapConfig, addMapData)",
+      "description": "Sets up a message handler for the webLoader to process various operations related to tile loading and JSON data handling for a heat map.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heat map object that will handle tile requests and JSON data."
+        },
+        {
+          "name": "addMapConfig",
+          "type": "function",
+          "description": "Function to handle the addition of map configuration JSON data."
+        },
+        {
+          "name": "addMapData",
+          "type": "function",
+          "description": "Function to handle the addition of map data JSON."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Logs messages to the console for debugging and error reporting.",
+        "Calls heatMap.tileRequestComplete with tile data or null.",
+        "Calls jsonSetterFunctions to set JSON data.",
+        "Calls UHM.mapNotFound if JSON loading fails."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "jsonLoadFailed",
+          "description": "Logs an error message and calls UHM.mapNotFound when JSON loading fails."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "isRow",
+      "namespace": "None",
+      "signature": "isRow(axis)",
+      "description": "Determines if the provided axis string is equal to 'row' (case insensitive).",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis string to be checked."
+        }
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the axis is 'row' (case insensitive), otherwise false."
+      }
+    },
+    {
+      "name": "constructor",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:constructor(heatMap, tileSpec)",
+      "description": "Initializes a new instance of the TileWindow class, which manages a specific range of tiles within a heat map. It validates the tile range, sets up references to the tile data, and determines the availability of all tiles in the specified range.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heat map object containing the tile data and cache."
+        },
+        {
+          "name": "tileSpec",
+          "type": "object",
+          "description": "An object specifying the layer, level, and tile range (start and end rows and columns) for the TileWindow."
+        }
+      ],
+      "side_effects": [
+        "Logs an error if the specified tile range is out of bounds.",
+        "Modifies the internal state of the TileWindow instance, including tile availability and status."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "OutOfRangeTiles",
+          "description": "Logs an error message if the specified tile range is out of the valid bounds of the heat map level."
+        }
+      ],
+      "returns": {
+        "type": "TileWindow",
+        "description": "A new instance of the TileWindow class."
+      }
+    },
+    {
+      "name": "myKey",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:myKey()",
+      "description": "Generates a unique key for the TileWindow instance by concatenating its properties with a dot separator.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "string",
+        "description": "A string representing the unique key for the TileWindow instance."
+      }
+    },
+    {
+      "name": "isTileInWindow",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:isTileInWindow(tile)",
+      "description": "Checks if a given tile is within the bounds of the current window based on layer, level, row, and column properties.",
+      "parameters": [
+        {
+          "name": "tile",
+          "type": "object",
+          "description": "The tile object to be checked, containing properties such as layer, level, row, and col."
+        }
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the tile is within the window bounds, otherwise false."
+      }
+    },
+    {
+      "name": "checkTile",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:checkTile(tile)",
+      "description": "Determines if a tile update applies to one of the tiles in the TileWindow. If so, it invalidates the status of _allTilesAvailable and updates the tile data.",
+      "parameters": [
+        {
+          "name": "tile",
+          "type": "object",
+          "description": "An object representing the tile to be checked. It should contain properties such as 'row', 'col', and 'data'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the tile data in the TileWindow.",
+        "Invalidates the status of _allTilesAvailable.",
+        "Logs errors to the console if the tile object is missing the 'data' property or if the tile index is out of range."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "NEWDATA message has no data field",
+          "description": "Logs an error to the console if the tile object does not have a 'data' property."
+        },
+        {
+          "errorCode": "Tile idx out of range",
+          "description": "Logs an error to the console if the calculated tile index is out of the valid range."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getTileData",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:getTileData(tileRow, tileCol)",
+      "description": "Retrieves the tile data for a specified row and column within the defined tile window. If the specified row and column are outside the bounds of the tile window, an error is logged and null is returned.",
+      "parameters": [
+        {
+          "name": "tileRow",
+          "type": "number",
+          "description": "The row index of the tile to retrieve."
+        },
+        {
+          "name": "tileCol",
+          "type": "number",
+          "description": "The column index of the tile to retrieve."
+        }
+      ],
+      "side_effects": [
+        "Logs an error message to the console if the specified tileRow and tileCol are out of bounds."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "getTileData out of limits",
+          "description": "Logs an error message to the console with details of the out-of-bounds request."
+        }
+      ],
+      "returns": {
+        "type": "object",
+        "description": "The tile data object if the specified row and column are within bounds; otherwise, null."
+      }
+    },
+    {
+      "name": "fetchTiles",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:fetchTiles()",
+      "description": "Initiates fetches for any tiles without data in the TileWindow. It iterates over the specified tile range and attempts to retrieve tile data from the cache. If the data is not available in the cache, it fetches the tile data from the heatMap.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the tiles array by adding tile data either from the cache or by fetching it."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "allTilesAvailable",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:allTilesAvailable()",
+      "description": "Checks if all tiles in the TileWindow are available in the heatMap's tileCache. The result is memoized until invalidated by a tile within the window becoming unavailable.",
+      "parameters": [],
+      "side_effects": [
+        "Sets this._allTilesAvailable to true or false based on the availability of tiles.",
+        "Sets this.tileStatusValid to true after checking tile availability."
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if all tiles are available, otherwise false."
+      }
+    },
+    {
+      "name": "onready",
+      "namespace": "TileWindow",
+      "signature": "TileWindow:onready(callback)",
+      "description": "This method waits until all tiles in the TileWindow are available. If a callback is provided, it will be called when all tiles are available. If no callback is provided, the method returns a Promise that resolves when all tiles are available.",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "function",
+          "description": "Optional. A function to be called when all tiles in the TileWindow are available."
+        }
+      ],
+      "side_effects": [
+        "Modifies tileWindow.heatMap.tileWindowListeners by adding a listener object.",
+        "Calls the provided callback function when all tiles are available."
+      ],
+      "returns": {
+        "type": "Promise | undefined",
+        "description": "Returns a Promise that resolves when all tiles in the TileWindow are available if no callback is provided. Returns undefined if a callback is provided."
+      }
+    },
+    {
+      "name": "checkReady",
+      "namespace": "None",
+      "signature": "checkReady(tileWindow, tile)",
+      "description": "Checks if a tile is ready by verifying if it belongs to the same layer and level as the tileWindow and if all tiles are available. If conditions are met, it resolves a promise and removes the entry from tileWindowListeners.",
+      "parameters": [
+        {
+          "name": "tileWindow",
+          "type": "TileWindow",
+          "description": "The window object containing the tile layer and level information."
+        },
+        {
+          "name": "tile",
+          "type": "Tile",
+          "description": "The tile object to be checked."
+        }
+      ],
+      "side_effects": [
+        "Resolves a promise if conditions are met.",
+        "Removes entry from tileWindowListeners if conditions are met."
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the tile is ready and conditions are met, otherwise returns false."
+      }
+    },
+    {
+      "name": "constructor",
+      "namespace": "TileCache",
+      "signature": "TileCache:constructor(heatMap)",
+      "description": "Constructs a TileCache for the specified heatMap. The TileCache is the lowest level of the system's data management hierarchy. It contains an entry for every tile accessed by the system and may contain weak references to the tile's data for quick access.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heatMap for which the TileCache is being constructed."
+        }
+      ],
+      "returns": {
+        "type": "TileCache",
+        "description": "A new instance of TileCache."
+      }
+    },
+    {
+      "name": "createTileCacheEntry",
+      "namespace": "TileCache",
+      "signature": "TileCache:createTileCacheEntry(tileCacheName)",
+      "description": "Creates a new cache entry for a tile in the TileCache. The cache entry includes properties such as layer, level, row, and column, as well as metadata about the tile's fetch and load times, fetch counts, and data size. The data itself is stored as a WeakRef, making it eligible for garbage collection when not in use.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache entry, formatted as 'layer.level.row.col'."
+        }
+      ],
+      "side_effects": [
+        "Modifies this.cacheEntries by adding a new entry for the specified tileCacheName."
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "The newly created cache entry object containing properties and metadata for the tile."
+      }
+    },
+    {
+      "name": "haveTileData",
+      "namespace": "TileCache",
+      "signature": "TileCache:haveTileData(tileCacheName)",
+      "description": "Checks if the specified tile has completed loading into the tile cache.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache to check."
+        }
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the specified tile has completed loading into the tile cache, otherwise false."
+      }
+    },
+    {
+      "name": "getTile",
+      "namespace": "TileCache",
+      "signature": "TileCache:getTile(layer, level, tileRow, tileColumn)",
+      "description": "Fetches the data tile specified by layer, level, tileRow, and tileColumn. If the tile data is already in the cache, it returns the data. Otherwise, it initiates a request to load the tile data and returns null.",
+      "parameters": [
+        {
+          "name": "layer",
+          "type": "String",
+          "description": "The layer of the tile to fetch."
+        },
+        {
+          "name": "level",
+          "type": "String",
+          "description": "The level of the tile to fetch."
+        },
+        {
+          "name": "tileRow",
+          "type": "Number",
+          "description": "The row of the tile to fetch."
+        },
+        {
+          "name": "tileColumn",
+          "type": "Number",
+          "description": "The column of the tile to fetch."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the cache entry for the specified tile.",
+        "Initiates a request to load the tile data if it is not already in the cache."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Object",
+        "description": "The tile's data if it's already in the TileCache, otherwise null."
+      }
+    },
+    {
+      "name": "showTileCacheStats",
+      "namespace": "TileCache",
+      "signature": "TileCache:showTileCacheStats()",
+      "description": "Displays statistics about each loaded tile cache entry, including fetch count, data size in kilobytes, load time, and load time per kilobyte. Also logs the longest load time encountered.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Logs statistics to the console."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "resetTileCacheEntry",
+      "namespace": "TileCache",
+      "signature": "TileCache:resetTileCacheEntry(tileCacheName)",
+      "description": "Resets a specific tile cache entry by its name. This function clears the fetch time and increments the failed fetches count if the entry data is not found.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache entry to reset."
+        }
+      ],
+      "side_effects": [
+        "Modifies the fetchTime property of the specified cache entry.",
+        "Increments the failedFetches count if the entry data is not found."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getTileCacheData",
+      "namespace": "TileCache",
+      "signature": "TileCache:getTileCacheData(tileCacheName)",
+      "description": "Retrieves the data for a specified tile from the cache if it is loaded.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache entry to retrieve data for."
+        }
+      ],
+      "side_effects": [
+        "Reads data from the cacheEntries object."
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "The data of the specified tile cache entry if it exists, otherwise null."
+      }
+    },
+    {
+      "name": "getEntryData",
+      "namespace": "TileCache",
+      "signature": "TileCache:getEntryData(tileCacheName, entry)",
+      "description": "Returns the data for the cache entry if it is loaded and has not been garbage collected.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache."
+        },
+        {
+          "name": "entry",
+          "type": "Object",
+          "description": "The cache entry object containing the data reference."
+        }
+      ],
+      "side_effects": [
+        "If the data has been garbage collected, the entry.data is set to null."
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "The data for the cache entry if it is still available, otherwise null."
+      }
+    },
+    {
+      "name": "setTileCacheEntry",
+      "namespace": "TileCache",
+      "signature": "TileCache:setTileCacheEntry(tileCacheName, arrayData)",
+      "description": "Called when the data for the specified tile has arrived. Saves a WeakRef to the data in the tile's cache entry, maintains various statistics about this request, and broadcasts a message to all of the HeatMap's event listeners that the tile's data has been received.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache entry to update."
+        },
+        {
+          "name": "arrayData",
+          "type": "Array",
+          "description": "The data array to be stored in the tile cache entry."
+        }
+      ],
+      "side_effects": [
+        "Updates the load time and data size of the tile cache entry.",
+        "Updates the longest load time if the current load time exceeds the previous longest load time.",
+        "Broadcasts a message to all HeatMap event listeners with the tile's data."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "constructor",
+      "namespace": "AccessWindow",
+      "signature": "AccessWindow:constructor(heatMap, win)",
+      "description": "Initializes an AccessWindow object, which is the highest level of the system's three-tiered data management hierarchy. It specifies the region of a HeatMap to access and initiates requests for any unavailable data tiles needed by the AccessWindow.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The HeatMap instance that the AccessWindow will interact with."
+        },
+        {
+          "name": "win",
+          "type": "Window",
+          "description": "An object specifying the layer, level, and the region (rows and columns) of the HeatMap to access."
+        }
+      ],
+      "side_effects": [
+        "Initializes the AccessWindow with the specified region of the HeatMap.",
+        "Initiates requests for any unavailable data tiles needed by the AccessWindow."
+      ],
+      "returns": {
+        "type": "AccessWindow",
+        "description": "A new instance of AccessWindow."
+      }
+    },
+    {
+      "name": "getValue",
+      "namespace": "AccessWindow",
+      "signature": "AccessWindow:getValue(row, column)",
+      "description": "Returns the value of a data element within the AccessWindow. The row and column are specified in HeatMap coordinates and must be within the range of the rows and columns specified when the AccessWindow was created.",
+      "parameters": [
+        {
+          "name": "row",
+          "type": "number",
+          "description": "The row index in HeatMap coordinates."
+        },
+        {
+          "name": "column",
+          "type": "number",
+          "description": "The column index in HeatMap coordinates."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "any",
+        "description": "The value of the data element at the specified row and column."
+      }
+    },
+    {
+      "name": "getRowValues",
+      "namespace": "AccessWindow",
+      "signature": "AccessWindow:getRowValues(row, firstCol, numCols)",
+      "description": "Returns an iterator for the numCols values starting from firstCol on the specified row. If firstCol is omitted, it defaults to the first column in the AccessWindow. If numCols is omitted, it defaults to the number of columns until the end of the AccessWindow. The iterator yields objects containing the index, column, and value for each cell in the specified range.",
+      "parameters": [
+        {
+          "name": "row",
+          "type": "number",
+          "description": "The row index in HeatMap coordinates."
+        },
+        {
+          "name": "firstCol",
+          "type": "number",
+          "description": "The starting column index in HeatMap coordinates. Defaults to the first column in the AccessWindow if omitted."
+        },
+        {
+          "name": "numCols",
+          "type": "number",
+          "description": "The number of columns to include in the iterator. Defaults to the number of columns until the end of the AccessWindow if omitted."
+        }
+      ],
+      "returns": {
+        "type": "iterator",
+        "description": "An iterator for the specified range of columns on the given row. Each iteration yields an object { i, col, value } where i is the zero-based index, col is the column index, and value is the data value at (row, col)."
+      }
+    },
+    {
+      "name": "allTilesAvailable",
+      "namespace": "AccessWindow",
+      "signature": "AccessWindow:allTilesAvailable()",
+      "description": "Checks if all tiles are available in the tile window.",
+      "parameters": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if all tiles are available, otherwise false."
+      }
+    },
+    {
+      "name": "onready",
+      "namespace": "AccessWindow",
+      "signature": "AccessWindow:onready(callback)",
+      "description": "This function ensures that a specified callback is executed once the tile window is ready. If no callback is provided, it returns a promise that resolves to the current instance.",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "function",
+          "description": "A function to be executed once the tile window is ready. If not provided, the function returns a promise."
+        }
+      ],
+      "returns": {
+        "type": "Promise<AccessWindow>",
+        "description": "A promise that resolves to the current instance if no callback is provided."
+      }
+    },
+    {
+      "name": "isTileInWindow",
+      "namespace": "AccessWindow",
+      "signature": "AccessWindow:isTileInWindow(tile)",
+      "description": "Checks if a given tile is within the current tile window.",
+      "parameters": [
+        {
+          "name": "tile",
+          "type": "Tile",
+          "description": "The tile object to check."
+        }
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the tile is within the window, otherwise false."
+      }
+    },
+    {
+      "name": "setCurrentDL",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setCurrentDL(dl)",
+      "description": "Sets the current data layer to the specified data layer. If the current data layer changes, the colors used for highlighting labels will be automatically updated. However, the colors of heat map views will not be updated here.",
+      "parameters": [
+        {
+          "name": "dl",
+          "type": "any",
+          "description": "The new data layer to be set as the current data layer."
+        }
+      ],
+      "side_effects": [
+        "Updates the _currentDl property of the HeatMap instance.",
+        "Calls the setSelectionColors method to update the colors used for highlighting labels."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getCurrentDL",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getCurrentDL(dl)",
+      "description": "Returns the current download limit (_currentDl) of the HeatMap instance.",
+      "parameters": [
+        {
+          "name": "dl",
+          "type": "any",
+          "description": "This parameter is not used within the function."
+        }
+      ],
+      "returns": {
+        "type": "any",
+        "description": "The current download limit (_currentDl) of the HeatMap instance."
+      }
+    },
+    {
+      "name": "getCurrentColorMap",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getCurrentColorMap()",
+      "description": "Get the color map for the heat map's current data layer.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "ColorMap",
+        "description": "The color map for the current data layer of the heat map."
+      }
+    },
+    {
+      "name": "setSelectionColors",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setSelectionColors()",
+      "description": "Set the colors for selected labels based on the current layer's color scheme.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the CSS variables --in-selection-color and --in-selection-background-color in the document's root element."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getMapConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getMapConfig()",
+      "description": "Retrieves the current map configuration for the HeatMap instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The current map configuration object of the HeatMap instance."
+      }
+    },
+    {
+      "name": "isMapLoaded",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.isMapLoaded()",
+      "description": "Checks if the map configuration is loaded by verifying if the mapConfig property is not null.",
+      "parameters": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the map configuration is loaded (i.e., mapConfig is not null), otherwise returns false."
+      }
+    },
+    {
+      "name": "isFileMode",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.isFileMode()",
+      "description": "Determines if the current source of the HeatMap instance is set to file mode.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the source of the HeatMap instance is MMGR.FILE_SOURCE, otherwise false."
+      }
+    },
+    {
+      "name": "isReadOnly",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.isReadOnly()",
+      "description": "Checks if the heat map is in read-only mode based on the map configuration.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the heat map is read-only, otherwise false."
+      }
+    },
+    {
+      "name": "getAxisConfig",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getAxisConfig(axis)",
+      "description": "Returns the configuration for the specified axis. If the axis is a row, it returns the row configuration; otherwise, it returns the column configuration.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the configuration is requested. It can be either 'row' or 'column'."
+        }
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "The configuration object for the specified axis."
+      }
+    },
+    {
+      "name": "getRowConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getRowConfig()",
+      "description": "Retrieves the row configuration settings from the HeatMap instance's map configuration.",
+      "parameters": [],
+      "returns": {
+        "type": "object",
+        "description": "The row configuration settings of the HeatMap instance."
+      }
+    },
+    {
+      "name": "getColConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getColConfig()",
+      "description": "Retrieves the column configuration from the HeatMap instance's map configuration.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The column configuration object from the HeatMap instance's map configuration."
+      }
+    },
+    {
+      "name": "getAxisCovariateConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getAxisCovariateConfig(axis)",
+      "description": "Retrieves the covariate configuration for a specified axis in the HeatMap. This function calls getAxisConfig to get the axis configuration and then returns the classifications property of the axis configuration.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the covariate configuration is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array of classifications for the specified axis."
+      }
+    },
+    {
+      "name": "getAxisCovariateOrder",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getAxisCovariateOrder(axis)",
+      "description": "Determines the covariate order for a specified axis (row or column) in the heatmap.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to get the covariate order. Expected values are 'row' or 'column'."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array representing the covariate order for the specified axis."
+      }
+    },
+    {
+      "name": "getRowClassificationConfig",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getRowClassificationConfig()",
+      "description": "Retrieves the row classification configuration from the HeatMap instance.",
+      "parameters": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of classification configurations for the rows."
+      }
+    },
+    {
+      "name": "getRowClassificationConfigOrder",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getRowClassificationConfigOrder()",
+      "description": "Retrieves the order of row classifications from the heat map configuration.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array representing the order of row classifications as defined in the heat map configuration."
+      }
+    },
+    {
+      "name": "getColClassificationConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getColClassificationConfig()",
+      "description": "Retrieves the column classification configuration from the HeatMap instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of column classification configurations."
+      }
+    },
+    {
+      "name": "getColClassificationConfigOrder",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getColClassificationConfigOrder()",
+      "description": "Retrieves the order of column classifications from the heat map configuration.",
+      "parameters": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array representing the order of column classifications as defined in the heat map configuration."
+      }
+    },
+    {
+      "name": "getCovariateBarTypes",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getCovariateBarTypes(axis)",
+      "description": "Returns an array of the display types of all covariate bars on a specified axis. Hidden bars have a height of zero. The order of entries is fixed but not specified.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve the covariate bar types."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array of display types for the covariate bars on the specified axis. Hidden bars are represented by a height of zero."
+      }
+    },
+    {
+      "name": "getCovariateBarParams",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getCovariateBarParams(axis)",
+      "description": "Returns an array of display parameters for all visible covariate bars on a specified axis. Hidden bars are represented by empty objects. The order of entries is fixed but not specified.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve covariate bar parameters."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array of objects containing display parameters for visible covariate bars. Hidden bars are represented by empty objects."
+      }
+    },
+    {
+      "name": "barParams",
+      "namespace": "None",
+      "signature": "barParams(config)",
+      "description": "Generates parameters for a bar plot configuration based on the provided configuration object.",
+      "parameters": [
+        {
+          "name": "config",
+          "type": "object",
+          "description": "Configuration object containing settings for the bar plot."
+        }
+      ],
+      "returns": {
+        "type": "object",
+        "description": "An object containing the parameters for the bar plot. If 'bar_type' is 'color_plot', it returns an object with 'color_map'. Otherwise, it returns an object with 'bg_color', 'fg_color', 'low_bound', and 'high_bound'."
+      }
+    },
+    {
+      "name": "getRowClassificationOrder",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getRowClassificationOrder(showOnly)",
+      "description": "This function retrieves the order of row classifications for a heatmap. It can optionally filter the classifications to include only those that are marked to be shown.",
+      "parameters": [
+        {
+          "name": "showOnly",
+          "type": "boolean",
+          "description": "If true, the function returns only the classifications that are marked to be shown. If undefined, it returns all classifications."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "array",
+        "description": "An array of classification keys representing the order of row classifications. If showOnly is true, only classifications marked to be shown are included."
+      }
+    },
+    {
+      "name": "setRowClassificationOrder",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setRowClassificationOrder()",
+      "description": "Sets the order of row classifications in the heatmap configuration based on the current state.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the row_configuration.classifications_order property of the mapConfig object."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getColClassificationOrder",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getColClassificationOrder(showOnly)",
+      "description": "Retrieves the order of column classifications for the heatmap. If the order is not predefined in the configuration, it generates the order from the classifications configuration. Optionally, it can filter the order to include only the classifications that are marked to be shown.",
+      "parameters": [
+        {
+          "name": "showOnly",
+          "type": "boolean",
+          "description": "If true, filters the order to include only classifications that are marked to be shown. If undefined, returns the full order."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "array",
+        "description": "An array of classification keys representing the order of column classifications. If showOnly is true, the array includes only the classifications that are marked to be shown."
+      }
+    },
+    {
+      "name": "constructor",
+      "namespace": "VisibleCovariateBar",
+      "signature": "VisibleCovariateBar:constructor(key, idx, details, scale)",
+      "description": "Initializes a new instance of the VisibleCovariateBar class, assigning properties from the details object and additional parameters.",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String",
+          "description": "The label key for the covariate bar."
+        },
+        {
+          "name": "idx",
+          "type": "Number",
+          "description": "The index of the covariate bar."
+        },
+        {
+          "name": "details",
+          "type": "Object",
+          "description": "An object containing additional details for the covariate bar."
+        },
+        {
+          "name": "scale",
+          "type": "Number",
+          "description": "A scaling factor to adjust the height of the covariate bar."
+        }
+      ],
+      "side_effects": [
+        "Assigns properties to the instance from the details object and additional parameters."
+      ],
+      "returns": {
+        "type": "VisibleCovariateBar",
+        "description": "A new instance of the VisibleCovariateBar class."
+      }
+    },
+    {
+      "name": "getScatterBarPlotColors",
+      "namespace": "VisibleCovariateBar",
+      "signature": "VisibleCovariateBar:getScatterBarPlotColors()",
+      "description": "Returns an array of colors to use when creating scatter or bar plots. The order of the colors matches the matrix values produced by SUM.buildScatterBarPlotMatrix.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "array",
+        "description": "An array of colors where [0] is the background color, [1] is the foreground color, and [2] is the cuts color."
+      }
+    },
+    {
+      "name": "getScaledVisibleCovariates",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getScaledVisibleCovariates(axis, scale)",
+      "description": "Returns an array of the visible covariates on the specified axis of the heat map. The height of each covariate is scaled by the provided scale. The returned array includes two additional methods: totalHeight, which returns the total height of all bars in the array, and containsLegend, which returns true if there's a bar with a bar/scatter plot legend.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis of the heat map to retrieve covariates for. Expected values are 'row' or 'column'."
+        },
+        {
+          "name": "scale",
+          "type": "Number",
+          "description": "The scale factor to apply to the height of each covariate."
+        }
+      ],
+      "side_effects": [
+        "Defines additional properties totalHeight and containsLegend on the returned array of bars."
+      ],
+      "returns": {
+        "type": "Array<VisibleCovariateBar>",
+        "description": "An array of VisibleCovariateBar objects representing the visible covariates on the specified axis, scaled by the provided scale. The array includes additional methods totalHeight and containsLegend."
+      }
+    },
+    {
+      "name": "totalHeight",
+      "namespace": "None",
+      "signature": "totalHeight()",
+      "description": "Calculates the total height by summing up the height properties of all elements in the array.",
+      "parameters": [],
+      "returns": {
+        "type": "number",
+        "description": "The total height calculated by summing the height properties of all elements in the array."
+      }
+    },
+    {
+      "name": "containsLegend",
+      "namespace": "None",
+      "signature": "containsLegend()",
+      "description": "Checks if the array contains any elements where the 'bar_type' property is not 'color_plot'.",
+      "parameters": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if there is at least one element in the array with 'bar_type' not equal to 'color_plot', otherwise false."
+      }
+    },
+    {
+      "name": "hasHiddenCovariates",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.hasHiddenCovariates(axis)",
+      "description": "Returns true if there are hidden covariates on the specified axis of the heat map.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis of the heat map to check for hidden covariates. It can be either 'row' or 'column'."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if there are hidden covariates on the specified axis, otherwise false."
+      }
+    },
+    {
+      "name": "setColClassificationOrder",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setColClassificationOrder()",
+      "description": "Sets the column classification order in the HeatMap configuration based on the current state.",
+      "parameters": [],
+      "side_effects": [
+        "Updates the col_configuration.classifications_order property of the mapConfig object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getMapInformation",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getMapInformation()",
+      "description": "Retrieves the map information from the HeatMap instance's configuration.",
+      "parameters": [],
+      "returns": {
+        "type": "object",
+        "description": "The map information object from the HeatMap instance's data configuration."
+      }
+    },
+    {
+      "name": "getDataLayers",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getDataLayers()",
+      "description": "Retrieves the data layers from the map configuration.",
+      "parameters": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of data layers from the map configuration."
+      }
+    },
+    {
+      "name": "getCurrentDataLayer",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getCurrentDataLayer()",
+      "description": "Retrieves the current data layer from the HeatMap instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The current data layer object from the HeatMap instance."
+      }
+    },
+    {
+      "name": "getDividerPref",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getDividerPref()",
+      "description": "Retrieves the summary width preference from the map configuration.",
+      "parameters": [],
+      "returns": {
+        "type": "number",
+        "description": "The summary width preference from the map configuration."
+      }
+    },
+    {
+      "name": "setDividerPref",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setDividerPref(sumSize)",
+      "description": "Sets the width percentage of the summary section in the heatmap configuration. If no size is provided, it calculates the width based on the current container and summary element widths.",
+      "parameters": [
+        {
+          "name": "sumSize",
+          "type": "number",
+          "description": "The desired width percentage of the summary section. If undefined, the width is calculated based on the current container and summary element widths."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the summary_width and detail_width properties of the mapConfig.data_configuration.map_information object."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "No return value."
+      }
+    },
+    {
+      "name": "setClassificationPrefs",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setClassificationPrefs(classname, axis, showVal, heightVal)",
+      "description": "Sets the classification preferences for rows or columns in the heatmap configuration. It updates the visibility and height of the specified classification based on the provided parameters.",
+      "parameters": [
+        {
+          "name": "classname",
+          "type": "string",
+          "description": "The name of the classification to be updated."
+        },
+        {
+          "name": "axis",
+          "type": "string",
+          "description": "Specifies whether the classification is for rows or columns. Expected values are 'row' or 'col'."
+        },
+        {
+          "name": "showVal",
+          "type": "boolean",
+          "description": "Determines whether the classification should be shown ('Y') or hidden ('N')."
+        },
+        {
+          "name": "heightVal",
+          "type": "number",
+          "description": "The height value to be set for the classification."
+        }
+      ],
+      "side_effects": [
+        "Updates the mapConfig object with new classification preferences."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setClassBarScatterPrefs",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setClassBarScatterPrefs(classname, axis, barType, lowBound, highBound, fgColorVal, bgColorVal)",
+      "description": "Sets the bar scatter preferences for a specific class in the heatmap configuration. This includes setting the bar type, bounds, and colors for either row or column classifications based on the provided axis.",
+      "parameters": [
+        {
+          "name": "classname",
+          "type": "string",
+          "description": "The name of the classification to set preferences for."
+        },
+        {
+          "name": "axis",
+          "type": "string",
+          "description": "The axis to apply the preferences to, either 'row' or 'column'."
+        },
+        {
+          "name": "barType",
+          "type": "string",
+          "description": "The type of bar to set for the classification."
+        },
+        {
+          "name": "lowBound",
+          "type": "number",
+          "description": "The lower bound value for the classification. If undefined, bounds and colors will not be set."
+        },
+        {
+          "name": "highBound",
+          "type": "number",
+          "description": "The upper bound value for the classification. If undefined, bounds and colors will not be set."
+        },
+        {
+          "name": "fgColorVal",
+          "type": "string",
+          "description": "The foreground color value for the classification."
+        },
+        {
+          "name": "bgColorVal",
+          "type": "string",
+          "description": "The background color value for the classification."
+        }
+      ],
+      "side_effects": [
+        "Modifies the mapConfig.row_configuration.classifications object.",
+        "Modifies the mapConfig.col_configuration.classifications object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setLayerGridPrefs",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setLayerGridPrefs(key, showVal, gridColorVal, selectionColorVal, gapColorVal)",
+      "description": "Sets the grid preferences for a specific data layer in the heat map configuration. This includes visibility, grid color, selection color, and gap color. If the specified layer is the current data layer, it updates the selection colors accordingly.",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String",
+          "description": "The key identifying the data layer to update."
+        },
+        {
+          "name": "showVal",
+          "type": "Boolean",
+          "description": "Determines whether the grid should be shown ('Y') or hidden ('N')."
+        },
+        {
+          "name": "gridColorVal",
+          "type": "String",
+          "description": "The color value for the grid."
+        },
+        {
+          "name": "selectionColorVal",
+          "type": "String",
+          "description": "The color value for the selection."
+        },
+        {
+          "name": "gapColorVal",
+          "type": "String",
+          "description": "The color value for the gaps."
+        }
+      ],
+      "side_effects": [
+        "Updates the grid preferences for the specified data layer in the heat map configuration.",
+        "If the specified layer is the current data layer, it updates the selection colors."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getRowOrganization",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getRowOrganization()",
+      "description": "Retrieves the organization configuration for the rows in the heatmap.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The organization configuration for the rows."
+      }
+    },
+    {
+      "name": "getColOrganization",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getColOrganization()",
+      "description": "Retrieves the column organization configuration from the HeatMap instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The column organization configuration object from the HeatMap instance."
+      }
+    },
+    {
+      "name": "getMapInformation",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getMapInformation()",
+      "description": "Retrieves the map information configuration data from the HeatMap instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The map information configuration data."
+      }
+    },
+    {
+      "name": "getPanelConfiguration",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getPanelConfiguration()",
+      "description": "Retrieves the panel configuration from the mapConfig object.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "object",
+        "description": "The panel configuration object from the mapConfig."
+      }
+    },
+    {
+      "name": "getRowDendroConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getRowDendroConfig()",
+      "description": "Retrieves the dendrogram configuration for the rows from the heatmap configuration.",
+      "parameters": [],
+      "returns": {
+        "type": "object",
+        "description": "The dendrogram configuration object for the rows."
+      }
+    },
+    {
+      "name": "getColDendroConfig",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getColDendroConfig()",
+      "description": "Retrieves the column dendrogram configuration from the heatmap's configuration settings.",
+      "parameters": [],
+      "returns": {
+        "type": "object",
+        "description": "The column dendrogram configuration object."
+      }
+    },
+    {
+      "name": "setRowDendrogramShow",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setRowDendrogramShow(value)",
+      "description": "Sets the visibility of the row dendrogram in the heatmap configuration.",
+      "parameters": [
+        {
+          "name": "value",
+          "type": "boolean",
+          "description": "A boolean value indicating whether the row dendrogram should be shown (true) or hidden (false)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the 'show' property of the row dendrogram configuration in the heatmap's mapConfig."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setColDendrogramShow",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setColDendrogramShow(value)",
+      "description": "Sets the visibility of the column dendrogram in the heatmap configuration.",
+      "parameters": [
+        {
+          "name": "value",
+          "type": "boolean",
+          "description": "A boolean value indicating whether the column dendrogram should be shown (true) or hidden (false)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the 'show' property of the column dendrogram configuration in the heatmap's mapConfig."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setRowDendrogramHeight",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setRowDendrogramHeight(value)",
+      "description": "Sets the height of the row dendrogram in the heatmap configuration.",
+      "parameters": [
+        {
+          "name": "value",
+          "type": "number",
+          "description": "The new height value for the row dendrogram."
+        }
+      ],
+      "side_effects": [
+        "Modifies the height property of the row dendrogram in the heatmap configuration."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "setColDendrogramHeight",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.setColDendrogramHeight(value)",
+      "description": "Sets the height of the column dendrogram in the heatmap configuration.",
+      "parameters": [
+        {
+          "name": "value",
+          "type": "number",
+          "description": "The height value to set for the column dendrogram."
+        }
+      ],
+      "side_effects": [
+        "Modifies the col_dendro_height property of the col_configuration object within the mapConfig of the HeatMap instance."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "showRowDendrogram",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.showRowDendrogram(layer)",
+      "description": "Determines whether the row dendrogram should be displayed based on the current configuration and the specified layer.",
+      "parameters": [
+        {
+          "name": "layer",
+          "type": "String",
+          "description": "The layer type for which the dendrogram visibility is being checked. Possible values are 'DETAIL' and 'SUMMARY'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the row dendrogram should be displayed, otherwise false."
+      }
+    },
+    {
+      "name": "showColDendrogram",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.showColDendrogram(layer)",
+      "description": "Determines whether the column dendrogram should be displayed based on the current configuration and the specified layer.",
+      "parameters": [
+        {
+          "name": "layer",
+          "type": "String",
+          "description": "The layer type for which the dendrogram visibility is being checked. Possible values are 'DETAIL' and 'SUMMARY'."
+        }
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the column dendrogram should be displayed, otherwise returns false."
+      }
+    },
+    {
+      "name": "setReadOnly",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.setReadOnly()",
+      "description": "Sets the map configuration to read-only mode by updating the map information.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the read_only property of the map_information object within the data_configuration of the mapConfig."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "saveDataSentToPluginToMapConfig",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.saveDataSentToPluginToMapConfig(nonce, postedConfig, postedData)",
+      "description": "Saves the configuration and data sent to a plugin into the map configuration object, associating it with a specific pane identified by a nonce.",
+      "parameters": [
+        {
+          "name": "nonce",
+          "type": "String",
+          "description": "A unique identifier used to find the specific pane in the DOM."
+        },
+        {
+          "name": "postedConfig",
+          "type": "Object",
+          "description": "The configuration object sent to the plugin."
+        },
+        {
+          "name": "postedData",
+          "type": "Object",
+          "description": "The data object sent to the plugin."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the mapConfig object with the configuration and data for the specified pane."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Cannot determine pane for given nonce",
+          "description": "Throws an error if the pane cannot be determined using the provided nonce."
+        }
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns false if an error occurs while determining the pane."
+      }
+    },
+    {
+      "name": "removePaneInfoFromMapConfig",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.removePaneInfoFromMapConfig(paneid)",
+      "description": "Removes the pane information from the map configuration for a given pane ID by setting it to null.",
+      "parameters": [
+        {
+          "name": "paneid",
+          "type": "String",
+          "description": "The ID of the pane to be removed from the map configuration."
+        }
+      ],
+      "side_effects": [
+        "Modifies the mapConfig object by setting the specified pane's configuration to null."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "saveLinkoutPaneToMapConfig",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.saveLinkoutPaneToMapConfig(paneid, url, paneTitle)",
+      "description": "Saves the linkout pane data to the map configuration object. If the panel_configuration property does not exist in the mapConfig, it initializes it.",
+      "parameters": [
+        {
+          "name": "paneid",
+          "type": "String",
+          "description": "The identifier for the pane."
+        },
+        {
+          "name": "url",
+          "type": "String",
+          "description": "The URL to be linked out from the pane."
+        },
+        {
+          "name": "paneTitle",
+          "type": "String",
+          "description": "The title of the pane."
+        }
+      ],
+      "side_effects": [
+        "Modifies the mapConfig object by adding or updating the panel_configuration property."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "saveDataFromPluginToMapConfig",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.saveDataFromPluginToMapConfig(nonce, dataFromPlugin)",
+      "description": "Saves data from a plugin to the map configuration. This data did not originally come from the NGCHM.",
+      "parameters": [
+        {
+          "name": "nonce",
+          "type": "String",
+          "description": "A unique identifier used to locate the pane associated with the plugin data."
+        },
+        {
+          "name": "dataFromPlugin",
+          "type": "Object",
+          "description": "The data received from the plugin that needs to be saved to the map configuration."
+        }
+      ],
+      "side_effects": [
+        "Modifies the mapConfig object by adding or updating the panel_configuration with the data from the plugin."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Cannot determine pane for given nonce",
+          "description": "Throws an error if the pane associated with the provided nonce cannot be determined."
+        }
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns false if an error occurs while determining the pane for the given nonce."
+      }
+    },
+    {
+      "name": "getAxisCovariateData",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getAxisCovariateData(axis)",
+      "defined_section": "Methods for accessing mapData",
+      "description": "Retrieves the covariate data for the specified axis (row or column) from the heatmap data.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve covariate data. Expected values are 'row' or 'column'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of classification data for the specified axis."
+      }
+    },
+    {
+      "name": "getRowClassificationData",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getRowClassificationData()",
+      "description": "Retrieves the classification data for rows from the heatmap's data.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array containing the classification data for each row in the heatmap."
+      }
+    },
+    {
+      "name": "getColClassificationData",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getColClassificationData()",
+      "description": "Retrieves the column classification data from the heat map.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of classification data for the columns in the heat map."
+      }
+    },
+    {
+      "name": "getAxisLabels",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getAxisLabels(axis)",
+      "description": "Retrieves the labels for the specified axis (row or column) in the heatmap.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve labels. Expected values are 'row' or 'column'."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array of labels for the specified axis."
+      }
+    },
+    {
+      "name": "getRowLabels",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getRowLabels()",
+      "description": "Retrieves the row labels from the heatmap data.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of row labels from the heatmap data."
+      }
+    },
+    {
+      "name": "getColLabels",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getColLabels()",
+      "description": "Retrieves the column labels from the heatmap data.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of column labels from the heatmap data."
+      }
+    },
+    {
+      "name": "getDendrogramData",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getDendrogramData(axis)",
+      "description": "Retrieves and processes dendrogram data for the specified axis (row or column) in a heatmap. The function extracts dendrogram data, splits it into components, and maps it into an array of objects containing left, right, and height properties.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "Specifies the axis ('row' or 'column') for which to retrieve dendrogram data."
+        }
+      ],
+      "returns": {
+        "type": "Array",
+        "description": "An array of objects, each containing 'left', 'right', and 'height' properties representing the dendrogram data."
+      }
+    },
+    {
+      "name": "getTotalRows",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getTotalRows()",
+      "defined_section": "Methods for accessing datalevels",
+      "description": "Returns the total number of detail rows from the datalevels of the HeatMap instance.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The total number of detail rows."
+      }
+    },
+    {
+      "name": "getSummaryRowRatio",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getSummaryRowRatio()",
+      "description": "Returns the summary row ratio from the data levels. If the summary level data is available, it returns the row summary ratio from the summary level. Otherwise, it returns the row summary ratio from the thumbnail level.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The summary row ratio from either the summary level or the thumbnail level."
+      }
+    },
+    {
+      "name": "getSummaryColRatio",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getSummaryColRatio()",
+      "description": "Returns the column summary ratio for the summary level if available, otherwise returns the column summary ratio for the thumbnail level.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The column summary ratio for the summary or thumbnail level."
+      }
+    },
+    {
+      "name": "getTotalRows",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getTotalRows()",
+      "description": "Returns the total number of detail rows from the datalevels object at the specified detail level.",
+      "parameters": [],
+      "returns": {
+        "type": "number",
+        "description": "The total number of detail rows."
+      }
+    },
+    {
+      "name": "getTotalCols",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getTotalCols()",
+      "description": "Returns the total number of columns at the detail level in the heat map.",
+      "parameters": [],
+      "returns": {
+        "type": "number",
+        "description": "The total number of columns at the detail level."
+      }
+    },
+    {
+      "name": "getTotalElementsForAxis",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getTotalElementsForAxis(axis)",
+      "description": "Returns the total number of elements (rows or columns) for the specified axis in the heatmap.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which the total number of elements is to be retrieved. It can be either 'row' or 'column'."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Number",
+        "description": "The total number of rows if the axis is 'row', or the total number of columns if the axis is 'column'."
+      }
+    },
+    {
+      "name": "getNumRows",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getNumRows(level)",
+      "description": "Returns the number of rows for a specified data level in the HeatMap.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "number",
+          "description": "The data level for which the number of rows is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The total number of rows for the specified data level."
+      }
+    },
+    {
+      "name": "getNumColumns",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.getNumColumns(level)",
+      "description": "Returns the number of columns for a given level in the heatmap.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "number",
+          "description": "The level for which the number of columns is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The total number of columns for the specified level."
+      }
+    },
+    {
+      "name": "getRowSummaryRatio",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getRowSummaryRatio(level)",
+      "description": "Returns the row summary ratio for a specified level in the HeatMap data structure.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "number",
+          "description": "The level for which the row summary ratio is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The row summary ratio for the specified level."
+      }
+    },
+    {
+      "name": "getColSummaryRatio",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getColSummaryRatio(level)",
+      "description": "Returns the column summary ratio for a specified level in the HeatMap data structure.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "number",
+          "description": "The level for which the column summary ratio is to be retrieved."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The column summary ratio for the specified level."
+      }
+    },
+    {
+      "name": "getValue",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getValue(level, row, column)",
+      "description": "Retrieves a data value from a specified row and column at a given level. This method is inefficient and it is recommended to use an AccessWindow for better performance.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "number",
+          "description": "The level from which to retrieve the data value."
+        },
+        {
+          "name": "row",
+          "type": "number",
+          "description": "The row index from which to retrieve the data value."
+        },
+        {
+          "name": "column",
+          "type": "number",
+          "description": "The column index from which to retrieve the data value."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The data value at the specified row and column."
+      }
+    },
+    {
+      "name": "getAllAlternateLevels",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getAllAlternateLevels(level)",
+      "description": "Recursively determines all levels for which the given level is an alternate. This function ensures that the returned levels are unique.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "String",
+          "description": "The level for which alternate levels are to be determined."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of unique levels for which the given level is an alternate."
+      }
+    },
+    {
+      "name": "getAlternates",
+      "namespace": "None",
+      "signature": "getAlternates(level)",
+      "description": "This function retrieves all alternate levels for a given level, ensuring that the returned list is unique. It recursively fetches alternates for each level and combines them into a single array without duplicates.",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "String",
+          "description": "The level for which to retrieve alternate levels."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of unique alternate levels for the given level."
+      }
+    },
+    {
+      "name": "getColorMapManager",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getColorMapManager()",
+      "description": "Retrieves the color map manager for the current heat map instance. If the color map manager does not exist, it initializes a new instance of CMM.ColorMapManager.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Initializes this.colorMapMgr if it is null"
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "CMM.ColorMapManager",
+        "description": "The color map manager for the current heat map instance, or null if mapConfig is not set."
+      }
+    },
+    {
+      "name": "initTileWindows",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.initTileWindows()",
+      "description": "Initializes the tile windows for the HeatMap instance by setting up listeners and references for tile windows.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Initializes the tileWindowListeners array to store onready functions for tile windows.",
+        "Initializes the tileWindowRefs Map to store references to tile windows."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "updateTileWindows",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.updateTileWindows(tile)",
+      "description": "This function listens for tile load notifications and updates the tile windows accordingly. It checks each TileWindow listener to see if all required tiles have been received and processes them.",
+      "parameters": [
+        {
+          "name": "tile",
+          "type": "Tile",
+          "description": "The tile object that has been loaded and needs to be checked against the tile windows."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies this.tileWindowRefs by removing entries that have been garbage collected.",
+        "Modifies this.tileWindowListeners by removing entries that have all required tiles available.",
+        "Calls this.sendCallBack with MMGR.Event_NEWDATA and the tile."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "tileIdReferenced",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.tileIdReferenced(tileId)",
+      "description": "Checks if a given tile ID is referenced within the tile window references of the HeatMap instance.",
+      "parameters": [
+        {
+          "name": "tileId",
+          "type": "String",
+          "description": "The tile ID to check, formatted as 'layer.level.row.col'."
+        }
+      ],
+      "side_effects": [
+        "Modifies the 'referenced' variable within the function scope."
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if the tile ID is referenced within the tile window references, otherwise false."
+      }
+    },
+    {
+      "name": "hasGaps",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.hasGaps()",
+      "description": "Returns true if the heatMap has gaps, otherwise false.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "True if the heatMap has gaps, otherwise false."
+      }
+    },
+    {
+      "name": "source",
+      "namespace": "HeatMap",
+      "signature": "HeatMap.prototype.source()",
+      "description": "Returns the source file of the heat map.",
+      "parameters": [],
+      "returns": {
+        "type": "String",
+        "description": "The source file of the heat map."
+      }
+    },
+    {
+      "name": "setUnAppliedChanges",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.setUnAppliedChanges(value)",
+      "description": "Sets the unAppliedChanges property of the HeatMap instance to indicate whether there are unsaved changes to the map configuration.",
+      "parameters": [
+        {
+          "name": "value",
+          "type": "boolean",
+          "description": "A boolean value indicating whether there are unsaved changes (true) or not (false)."
+        }
+      ],
+      "side_effects": [
+        "Modifies the unAppliedChanges property of the HeatMap instance."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getUnAppliedChanges",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getUnAppliedChanges()",
+      "description": "Returns the current value of the unAppliedChanges property of the HeatMap instance.",
+      "parameters": [],
+      "returns": {
+        "type": "Array",
+        "description": "The current value of the unAppliedChanges property."
+      }
+    },
+    {
+      "name": "sendCallBack",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.sendCallBack(event, tile)",
+      "description": "Call the user's callback function to notify them that the heat map (chm) is initialized or updated.",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "String",
+          "description": "The event type indicating the status of the heat map (e.g., initialized, new data)."
+        },
+        {
+          "name": "tile",
+          "type": "Object",
+          "description": "The tile object containing information about the map tile, including its level."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Sets the initialized status of the heat map.",
+        "Configures the page header.",
+        "Hides the loader if panel configuration is not present.",
+        "Sends event notifications to all listeners."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getNewTileWindow",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getNewTileWindow(tileSpec)",
+      "description": "Private method used to obtain a new or existing TileWindow given a tileSpec. If a TileWindow already exists for the given tileSpec and has not been garbage collected, it returns the existing TileWindow. Otherwise, it creates a new TileWindow, stores a weak reference to it, and returns the new TileWindow.",
+      "parameters": [
+        {
+          "name": "tileSpec",
+          "type": "TileSpec",
+          "description": "An object containing the specifications for the tile, including layer, level, startRowTile, endRowTile, startColTile, and endColTile."
+        }
+      ],
+      "side_effects": [
+        "Stores a weak reference to the newly created TileWindow in the tileWindowRefs map."
+      ],
+      "returns": {
+        "type": "TileWindow",
+        "description": "The existing or newly created TileWindow corresponding to the given tileSpec."
+      }
+    },
+    {
+      "name": "getTileWindow",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getTileWindow(win)",
+      "description": "Private method used to obtain a TileWindow for a new AccessWindow. It calls getTileAccessWindow from the appropriate data level to determine the tileSpec for the desired TileWindow, then calls getNewTileWindow to obtain either an existing or a new TileWindow for that tileSpec.",
+      "parameters": [
+        {
+          "name": "win",
+          "type": "AccessWindow",
+          "description": "An object representing the window of tiles to be accessed, containing properties such as level, layer, firstRow, firstCol, numRows, and numCols."
+        }
+      ],
+      "returns": {
+        "type": "TileWindow",
+        "description": "Returns a TileWindow object for the specified AccessWindow."
+      }
+    },
+    {
+      "name": "getNewAccessWindow",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getNewAccessWindow(win)",
+      "description": "Obtain an access window for the specified view window. The access window provides methods to interact with the data in the heat map, including retrieving values and setting up callbacks for when data is ready.",
+      "parameters": [
+        {
+          "name": "win",
+          "type": "object",
+          "description": "The view window for which the access window is to be obtained."
+        }
+      ],
+      "returns": {
+        "type": "AccessWindow",
+        "description": "An access window object that contains methods to interact with the heat map data."
+      }
+    },
+    {
+      "name": "getSummaryHist",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.getSummaryHist(layer, lowBP, highBP)",
+      "description": "Obtain a promise for a histogram of the map's summary values. The function calculates the histogram bins and breakpoints for a given layer within specified low and high breakpoints.",
+      "parameters": [
+        {
+          "name": "layer",
+          "type": "Layer",
+          "description": "The layer of the map for which the histogram is to be generated."
+        },
+        {
+          "name": "lowBP",
+          "type": "number",
+          "description": "The lower breakpoint for the histogram bins."
+        },
+        {
+          "name": "highBP",
+          "type": "number",
+          "description": "The higher breakpoint for the histogram bins."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise<Histogram>",
+        "description": "A promise that resolves to an object containing the histogram data with fields: breaks, bins, binMax, total, and nan."
+      }
+    },
+    {
+      "name": "HeatMap",
+      "namespace": "None",
+      "signature": "HeatMap(heatMapName, updateCallbacks, fileSrc, chmFile, compat)",
+      "description": "Constructor function for the HeatMap class, which holds heat map properties and a tile cache. It initializes the heat map with the provided parameters and sets up necessary event listeners and tile windows. Depending on the source of the map, it either connects to a web loader or loads the map from a zip file.",
+      "parameters": [
+        {
+          "name": "heatMapName",
+          "type": "String",
+          "description": "The name of the heat map."
+        },
+        {
+          "name": "updateCallbacks",
+          "type": "Object",
+          "description": "Callbacks for updating the heat map."
+        },
+        {
+          "name": "fileSrc",
+          "type": "String",
+          "description": "The source of the map (Web, File, etc.)."
+        },
+        {
+          "name": "chmFile",
+          "type": "Object",
+          "description": "Reference to the zip file (for NGCHMs from files only)."
+        },
+        {
+          "name": "compat",
+          "type": "Object",
+          "description": "Compatibility object containing methods for adding map configuration and data."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Initializes event listeners and tile windows.",
+        "Creates a tile cache.",
+        "Connects to a web loader or loads the map from a zip file."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "HeatMap",
+        "description": "An instance of the HeatMap class."
+      }
+    },
+    {
+      "name": "addDataLayers",
+      "namespace": "None",
+      "signature": "addDataLayers(heatMap)",
+      "description": "Helper function to initialize the data levels of a heat map once the tile structure is known. It sets up various data levels and their relationships based on the map configuration.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heat map object that contains the map configuration and will be modified to include data levels."
+        }
+      ],
+      "side_effects": [
+        "Modifies heatMap.datalevels by adding new HeatMapLevel objects or aliases.",
+        "Modifies heatMap.alternateLevels to record levels for which an alternate level is serving as an immediate alternate.",
+        "Calls prefetchInitialTiles(heatMap) to prefetch initial tiles.",
+        "Calls heatMap.sendCallBack(MMGR.Event_INITIALIZED) to signal that initialization is complete."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "createLevel",
+      "namespace": "None",
+      "signature": "createLevel(levelId, lowerLevelId, altLevelId)",
+      "description": "Creates a new level in the heat map configuration. If the levelId exists in levelsConf, it initializes a new HeatMapLevel. If not, it assigns an alternate level if altLevelId is provided.",
+      "parameters": [
+        {
+          "name": "levelId",
+          "type": "String",
+          "description": "The identifier for the new level to be created."
+        },
+        {
+          "name": "lowerLevelId",
+          "type": "String",
+          "description": "The identifier for the lower level, if any, to be associated with the new level."
+        },
+        {
+          "name": "altLevelId",
+          "type": "String",
+          "description": "The identifier for an alternate level to be used if levelId does not exist in levelsConf."
+        }
+      ],
+      "side_effects": [
+        "Modifies heatMap.datalevels by adding a new HeatMapLevel or assigning an alternate level.",
+        "Updates heatMap.alternateLevels to record levels using altLevelId as an alternate."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "prefetchInitialTiles",
+      "namespace": "None",
+      "signature": "prefetchInitialTiles(heatMap)",
+      "description": "Helper function to permanently associate an AccessWindow for the thumbnail level of every layer with the heatMap. This has the effect of prefetching and preserving the thumbnail level tiles for all layers.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heatMap object that contains map configuration and methods to get new access windows and dimensions."
+        }
+      ],
+      "side_effects": [
+        "Modifies heatMap.thumbnailWindowRefs by associating it with AccessWindow objects for each data layer."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "constructor",
+      "namespace": "HeatMapLevel",
+      "signature": "HeatMapLevel:constructor(tileCache, level, jsonData, lowerLevel)",
+      "defined_section": "BEGIN class HeatMapLevel",
+      "description": "Initializes a new instance of the HeatMapLevel class, which supports accessing the HeatMap's data at a specific summarization level. It computes the differences in scales and indices between different levels.",
+      "parameters": [
+        {
+          "name": "tileCache",
+          "type": "object",
+          "description": "Cache for storing tile data."
+        },
+        {
+          "name": "level",
+          "type": "number",
+          "description": "The summarization level of the heat map."
+        },
+        {
+          "name": "jsonData",
+          "type": "object",
+          "description": "JSON data containing heat map details such as total rows, total columns, tile rows, tile columns, rows per tile, columns per tile, row summary ratio, and column summary ratio."
+        },
+        {
+          "name": "lowerLevel",
+          "type": "HeatMapLevel",
+          "description": "The lower summarization level of the heat map, used for computing scale differences. Can be null."
+        }
+      ],
+      "side_effects": [
+        "Initializes various properties of the HeatMapLevel instance, including tileCache, level, totalRows, totalColumns, numTileRows, numTileColumns, rowsPerTile, colsPerTile, rowSummaryRatio, colSummaryRatio, lowerLevel, rowToLower, colToLower, lastTileWindow, isLineACut, colsInLastTile, and rowsInLastTile."
+      ],
+      "returns": {
+        "type": "HeatMapLevel",
+        "description": "A new instance of the HeatMapLevel class."
+      }
+    },
+    {
+      "name": "numRowsInTile",
+      "namespace": "HeatMapLevel",
+      "signature": "HeatMapLevel:numRowsInTile(tileRow)",
+      "description": "Determines the number of rows in a specified tile row. Normally, it returns the standard number of rows per tile, but for the last row of tiles, it may return a different number.",
+      "parameters": [
+        {
+          "name": "tileRow",
+          "type": "number",
+          "description": "The index of the tile row for which the number of rows is to be determined."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The number of rows in the specified tile row."
+      }
+    },
+    {
+      "name": "numColsInTile",
+      "namespace": "HeatMapLevel",
+      "signature": "HeatMapLevel:numColsInTile(tileCol)",
+      "description": "Determines the number of columns per tile in the specified tile column. Normally, it returns the standard number of columns per tile, but for the last column of tiles, it may return a different number.",
+      "parameters": [
+        {
+          "name": "tileCol",
+          "type": "number",
+          "description": "The index of the tile column for which the number of columns is to be determined."
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The number of columns in the specified tile column."
+      }
+    },
+    {
+      "name": "getLayerValue",
+      "namespace": "HeatMapLevel",
+      "signature": "HeatMapLevel:getLayerValue(layer, tileWindow, row, column)",
+      "description": "Get a value for a specific row and column in a heatmap layer. If the tile containing the value is not available, it retrieves a down-sampled value from a lower data level.",
+      "parameters": [
+        {
+          "name": "layer",
+          "type": "str",
+          "description": "The layer of the heatmap from which to retrieve the value."
+        },
+        {
+          "name": "tileWindow",
+          "type": "object",
+          "description": "The tile window object that may contain the desired value. If not provided, it will be calculated."
+        },
+        {
+          "name": "row",
+          "type": "int",
+          "description": "The row index for which the value is to be retrieved."
+        },
+        {
+          "name": "column",
+          "type": "int",
+          "description": "The column index for which the value is to be retrieved."
+        }
+      ],
+      "side_effects": [
+        "Modifies this.lastTileWindow to cache the last used tile window."
+      ],
+      "returns": {
+        "type": "int",
+        "description": "The value at the specified row and column. Returns 0 if the value is not available."
+      }
+    },
+    {
+      "name": "getRowValues",
+      "namespace": "HeatMapLevel",
+      "signature": "HeatMapLevel:getRowValues(tileWindow, row, firstCol, numCols)",
+      "description": "Retrieves an iterable object that yields the values of a specified row within a tile window, including handling cases where data is fetched from a lower level or filled with default values.",
+      "parameters": [
+        {
+          "name": "tileWindow",
+          "type": "TileWindow",
+          "description": "The tile window object containing the data."
+        },
+        {
+          "name": "row",
+          "type": "number",
+          "description": "The row index for which values are to be retrieved."
+        },
+        {
+          "name": "firstCol",
+          "type": "number",
+          "description": "The starting column index within the row."
+        },
+        {
+          "name": "numCols",
+          "type": "number",
+          "description": "The number of columns to retrieve values for."
+        }
+      ],
+      "side_effects": [
+        "Modifies the row and firstCol parameters by applying bitwise OR with 0."
+      ],
+      "returns": {
+        "type": "Iterable",
+        "description": "An iterable object that yields objects containing the column index and value for each column in the specified row."
+      }
+    },
+    {
+      "name": "undefined",
+      "namespace": "myIterable",
+      "signature": "myIterable.undefined()",
+      "description": "This function is a generator that iterates over columns of data, yielding objects containing column indices and values. It handles data retrieval from tiles and lower levels, and fills in missing data with zeros if necessary.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the iteration state of myIterable by yielding objects."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Iterator",
+        "description": "Yields objects containing column indices and values."
+      }
+    },
+    {
+      "name": "getTileAccessWindow",
+      "namespace": "HeatMapLevel",
+      "signature": "HeatMapLevel:getTileAccessWindow(layer, row, column, numRows, numColumns, getTileWindow)",
+      "description": "Calculates the tile access window for a given layer and returns the result of the getTileWindow function with the calculated tile specifications.",
+      "parameters": [
+        {
+          "name": "layer",
+          "type": "number",
+          "description": "The layer number for which the tile access window is being calculated."
+        },
+        {
+          "name": "row",
+          "type": "number",
+          "description": "The starting row index for the tile access window."
+        },
+        {
+          "name": "column",
+          "type": "number",
+          "description": "The starting column index for the tile access window."
+        },
+        {
+          "name": "numRows",
+          "type": "number",
+          "description": "The number of rows to include in the tile access window."
+        },
+        {
+          "name": "numColumns",
+          "type": "number",
+          "description": "The number of columns to include in the tile access window."
+        },
+        {
+          "name": "getTileWindow",
+          "type": "function",
+          "description": "A callback function that takes the tile specifications and returns the desired tile window."
+        }
+      ],
+      "side_effects": [
+        "Modifies the tileSpec object with calculated tile specifications."
+      ],
+      "returns": {
+        "type": "object",
+        "description": "The result of the getTileWindow function, which is called with the calculated tile specifications."
+      }
+    },
+    {
+      "name": "initAxisLabels",
+      "namespace": "MMGR",
+      "signature": "MMGR.initAxisLabels()",
+      "description": "Initializes the axis labels for the heatmap by setting up the actual and shown axis labels as well as their parameters.",
+      "parameters": [],
+      "side_effects": [
+        "Initializes global variables actualAxisLabels, shownAxisLabels, and shownAxisLabelParams."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "getActualLabels",
+      "namespace": "MMGR",
+      "signature": "MMGR.getActualLabels(axis)",
+      "description": "Retrieves the actual labels for a specified axis (row or column) from a heatmap. If the labels are not already cached, it fetches them and processes them to extract the relevant part.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve labels. It can be either 'row' or 'column'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the global variable actualAxisLabels by caching the processed labels for the specified axis."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of processed labels for the specified axis."
+      }
+    },
+    {
+      "name": "getShownLabels",
+      "namespace": "MMGR",
+      "signature": "MMGR.getShownLabels(axis)",
+      "description": "Retrieves the labels to be shown on the specified axis (either 'ROW' or 'COLUMN') of a heatmap. It recalculates the labels if the parameters affecting them have changed.",
+      "parameters": [
+        {
+          "name": "axis",
+          "type": "String",
+          "description": "The axis for which to retrieve the shown labels. It can be either 'ROW' or 'COLUMN'."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the shownAxisLabelParams object with new label display length and method if they have changed.",
+        "Modifies the shownAxisLabels object with the recalculated labels."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "Array",
+        "description": "An array of strings representing the labels to be shown on the specified axis."
+      }
+    },
+    {
+      "name": "getLabelText",
+      "namespace": "MMGR",
+      "signature": "MMGR.getLabelText(text, type, builder)",
+      "description": "This function examines label text and shortens it if the label exceeds the allowable length specified in the heat map configuration. The shortening method depends on the configuration and the type of label (ROW or COLUMN).",
+      "parameters": [
+        {
+          "name": "text",
+          "type": "String",
+          "description": "The label text to be examined and potentially shortened."
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "description": "The type of label, either 'ROW' or 'COLUMN'."
+        },
+        {
+          "name": "builder",
+          "type": "Boolean",
+          "description": "Optional parameter to indicate if the function is called from the builder context."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "String",
+        "description": "The potentially shortened label text."
+      }
+    },
+    {
+      "name": "zipAppDownload",
+      "namespace": "None",
+      "signature": "zipAppDownload()",
+      "description": "The user clicked on the 'Download Viewer' button. This function hides the button and initiates the download of the NG-CHM Viewer application.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "downloadFileApplication",
+      "namespace": "None",
+      "signature": "downloadFileApplication()",
+      "description": "Initiates the download of the NGCHM File Viewer application zip file based on the current environment and source of the heat map.",
+      "parameters": [],
+      "called_urls": [
+        "/plugins/visualizations/mda_heatmap_viz/static/ngChmApp.zip",
+        "COMPAT.viewerAppUrl",
+        "CFG.api + 'ZipAppDownload'"
+      ],
+      "side_effects": [
+        "Opens a new window to download the application zip file.",
+        "Calls a servlet to initiate the download."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "viewerAppVersionExpiredNotification",
+      "namespace": "None",
+      "signature": "viewerAppVersionExpiredNotification(oldVersion, newVersion)",
+      "description": "This function handles all of the tasks necessary to display a modal window whenever a user's version of the NG-CHM File Viewer application has been superseded and a new version of the file application should be downloaded.",
+      "parameters": [
+        {
+          "name": "oldVersion",
+          "type": "String",
+          "description": "The current version of the NG-CHM File Viewer application that the user is running."
+        },
+        {
+          "name": "newVersion",
+          "type": "String",
+          "description": "The newer version of the NG-CHM File Viewer application that is available for download."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Displays a modal window to the user with information about the new version of the NG-CHM File Viewer application."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "showDownloadViewerNotification",
+      "namespace": "None",
+      "signature": "showDownloadViewerNotification(title, bodyText)",
+      "description": "Displays a notification message box prompting the user to download a viewer application. The message box includes a title, body text, and two buttons: one to download the viewer and another to cancel the action.",
+      "parameters": [
+        {
+          "name": "title",
+          "type": "String",
+          "description": "The title text to be displayed in the message box header."
+        },
+        {
+          "name": "bodyText",
+          "type": "String",
+          "description": "The body text to be displayed in the message box."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Initializes and displays a message box with specific content and buttons.",
+        "Triggers the download of a viewer application when the download button is clicked.",
+        "Closes the message box when the cancel button is clicked."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "checkViewerVersion",
+      "namespace": "None",
+      "signature": "checkViewerVersion(heatMap)",
+      "description": "Compares the current version of the NG-CHM viewer to the latest available version and notifies the user if they are using an outdated standalone viewer.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heat map object used to determine the source of the heat map."
+        }
+      ],
+      "called_urls": [
+        "COMPAT.versionCheckUrl + baseVersion"
+      ],
+      "side_effects": [
+        "Logs failure to console if the version check request fails.",
+        "Notifies the user if the viewer version is outdated."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "req.status != 200",
+          "description": "Logs a failure message to the console if the request to get the latest version fails."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onreadystatechange",
+      "namespace": "None",
+      "signature": "req.onreadystatechange()",
+      "description": "Handles the state change of an XMLHttpRequest to determine if the request was successful and processes the response accordingly.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Logs a message to the console if the request fails.",
+        "Logs version comparison details to the console if debug mode is enabled.",
+        "Calls viewerAppVersionExpiredNotification if the latest version is newer and certain conditions are met."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "newer",
+      "namespace": "None",
+      "signature": "newer(v1, v2)",
+      "description": "Compares two version numbers and determines if the first version (v1) is newer than the second version (v2).",
+      "parameters": [
+        {
+          "name": "v1",
+          "type": "String",
+          "description": "The first version number to compare, consisting of integers separated by periods."
+        },
+        {
+          "name": "v2",
+          "type": "String",
+          "description": "The second version number to compare, consisting of integers separated by periods."
+        }
+      ],
+      "returns": {
+        "type": "Boolean",
+        "description": "Returns true if v1 is greater than v2, otherwise returns false."
+      }
+    },
+    {
+      "name": "loadNgChmFromZip",
+      "namespace": "None",
+      "signature": "loadNgChmFromZip(heatMap, addMapConfig, addMapData)",
+      "description": "Loads the JSON files from the heatMap's zip file. Constructs an index of the zip file entries in heatMap.zipFiles, then loads the mapConfig and mapData JSON files and calls addMapConfig and addMapData respectively to load them into the heatMap.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "The heatMap object containing the zip file and other related properties."
+        },
+        {
+          "name": "addMapConfig",
+          "type": "function",
+          "description": "Callback function to handle the loaded mapConfig JSON data."
+        },
+        {
+          "name": "addMapData",
+          "type": "function",
+          "description": "Callback function to handle the loaded mapData JSON data."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies heatMap.zipFiles by adding entries from the zip file.",
+        "Sets heatMap.mapName based on the first entry in the zip file."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "File is empty (zero bytes)",
+          "description": "Logs an error and returns if the zip file is empty."
+        },
+        {
+          "errorCode": "Empty zip file",
+          "description": "Logs an error and returns if the zip file contains no entries."
+        },
+        {
+          "errorCode": "File format not recognized",
+          "description": "Logs an error and returns if the zip file entries do not have the expected format."
+        },
+        {
+          "errorCode": "Missing NGCHM content",
+          "description": "Logs an error if the required mapConfig or mapData JSON files are missing from the zip file."
+        },
+        {
+          "errorCode": "Zip file read error",
+          "description": "Logs an error if there is an issue reading the zip file."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "No return value."
+      }
+    },
+    {
+      "name": "zipFetchJson",
+      "namespace": "None",
+      "signature": "zipFetchJson(heatMap, entry, setterFunction)",
+      "description": "Fetches JSON data from a zip entry and applies a setter function to update the heatMap with the parsed data.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "The heatMap object that will be updated with the fetched JSON data."
+        },
+        {
+          "name": "entry",
+          "type": "object",
+          "description": "The zip entry object from which JSON data will be fetched."
+        },
+        {
+          "name": "setterFunction",
+          "type": "function",
+          "description": "The function that will be called to set the parsed JSON data into the heatMap."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the heatMap object with the fetched and parsed JSON data."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "loadHeatMapTile",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.loadHeatMapTile(job)",
+      "description": "Loads the specified tile from the heatMap. If the tile is already in the cache or currently being read, it avoids duplicate requests. Otherwise, it adds the tile request to the pending queue and initiates the tile loading process.",
+      "parameters": [
+        {
+          "name": "job",
+          "type": "object",
+          "description": "An object containing details about the tile to be loaded, including the tileCacheName."
+        }
+      ],
+      "side_effects": [
+        "Modifies this.pendingTileRequests by adding the job to the queue.",
+        "May log debug information to the console if debug mode is enabled."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Duplicate pending tileCachenames",
+          "description": "Logs an error if there are duplicate tileCacheNames in the pending queue."
+        },
+        {
+          "errorCode": "Pending tileCachename in current tileCacheNames",
+          "description": "Logs an error if a tileCacheName in the pending queue is also in the current requests."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "No return value."
+      }
+    },
+    {
+      "name": "tileRequestComplete",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.tileRequestComplete(tileCacheName, tileData)",
+      "description": "Handles the completion of a tile request by removing the tile from the list of current requests, starting a new tile request, and updating the tile cache based on the result.",
+      "parameters": [
+        {
+          "name": "tileCacheName",
+          "type": "String",
+          "description": "The name of the tile cache entry that has completed its request."
+        },
+        {
+          "name": "tileData",
+          "type": "Object",
+          "description": "The data for the tile if the request was successful, or null if an error occurred."
+        }
+      ],
+      "side_effects": [
+        "Removes the tile from the currentTileRequests array.",
+        "Starts a new tile request by calling submitFirstPendingTileRequest.",
+        "Updates the tile cache by setting or resetting the tile cache entry."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Tile has disappeared from currentTileRequests",
+          "description": "Logs an error message if the tile is not found in the currentTileRequests array."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "submitFirstPendingTileRequest",
+      "namespace": "HeatMap.prototype",
+      "signature": "HeatMap.prototype.submitFirstPendingTileRequest()",
+      "description": "This function submits the most recent pending TileRequest. It removes the most recent TileRequest from the pending request queue, adds it to the current request list, and calls the appropriate tile loader. Requests for tiles that are no longer needed by any current TileWindow are discarded.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies this.pendingTileRequests by removing the most recent TileRequest.",
+        "Modifies this.currentTileRequests by adding the tileCacheName of the job.",
+        "Calls MMGR.webLoader.postMessage if the source is MMGR.WEB_SOURCE or MMGR.LOCAL_SOURCE.",
+        "Calls zipFetchTile if the source is not MMGR.WEB_SOURCE or MMGR.LOCAL_SOURCE."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "zipFetchTile",
+      "namespace": "None",
+      "signature": "zipFetchTile(heatMap, job)",
+      "description": "Reads the tile specified by the job from the HeatMap's zip file and processes it. Calls heatMap.tileRequestComplete when done.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The HeatMap object containing the zip files and the tileRequestComplete method."
+        },
+        {
+          "name": "job",
+          "type": "Job",
+          "description": "An object containing details about the tile to be fetched, including layer, level, and tileName."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Calls heatMap.tileRequestComplete with the tile data or null if the tile is not found.",
+        "Logs errors to the console if the tile is not found or if there is an error reading the zip file."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "undefined",
+          "description": "Logs an error if the tile is not found in the zip files and calls heatMap.tileRequestComplete with null."
+        },
+        {
+          "errorCode": "FileReader.error",
+          "description": "Logs an error if there is an error reading the zip file and calls heatMap.tileRequestComplete with null."
+        },
+        {
+          "errorCode": "zip.getData.error",
+          "description": "Logs an error if there is an error getting the zip tile data."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onerror",
+      "namespace": "fr",
+      "signature": "fr.onerror()",
+      "description": "Handles errors that occur during the file reading process, logs the error to the console, and marks the tile request as complete with an error.",
+      "parameters": [],
+      "side_effects": [
+        "Logs an error message to the console.",
+        "Calls heatMap.tileRequestComplete with null to indicate an error."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "onload",
+      "namespace": "fr",
+      "signature": "fr.onload(e)",
+      "description": "Handles the load event for a FileReader object, processes the result as a Float32Array, and completes a tile request for a heat map.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The load event triggered when the FileReader has successfully read a file."
+        }
+      ],
+      "side_effects": [
+        "Modifies the heatMap by completing a tile request with the processed Float32Array data."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "zipSaveMapProperties",
+      "namespace": "None",
+      "signature": "zipSaveMapProperties(heatMap, mapConf, progressMeter)",
+      "description": "Creates a zip file containing the properties of a heat map and saves it. The function handles the creation of the zip file, adding entries to it, and saving the final blob as a file. It also updates a progress meter and handles errors during the process.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "An object representing the heat map, containing properties and files to be zipped."
+        },
+        {
+          "name": "mapConf",
+          "type": "object",
+          "description": "Configuration object for the map, which can override the default configuration in the heatMap object."
+        },
+        {
+          "name": "progressMeter",
+          "type": "function",
+          "description": "A callback function to update the progress of the zip creation process. It should return a boolean indicating whether to continue the process."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Saves a file with the .ngchm extension using the saveAs function.",
+        "Displays an error message box if the zip creation fails."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Cancelled by user",
+          "description": "The process is stopped if the progressMeter callback returns false."
+        },
+        {
+          "errorCode": "General Error",
+          "description": "Displays an error message box with the error details if any other error occurs."
+        }
+      ],
+      "returns": {
+        "type": "Promise<boolean>",
+        "description": "A promise that resolves to true if the zip file is successfully created and saved, or false if an error occurs."
+      }
+    },
+    {
+      "name": "addAllZipEntries",
+      "namespace": "None",
+      "signature": "addAllZipEntries(zipWriter)",
+      "description": "Adds all entries from the heatMap.zipFiles object to the provided zipWriter. The function processes each entry sequentially, updating a progress meter if available, and handles different types of entries (binary, mapConfig, and text) appropriately.",
+      "parameters": [
+        {
+          "name": "zipWriter",
+          "type": "object",
+          "description": "An instance of a zip writer to which the entries will be added."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Updates the progressMeter if available.",
+        "Modifies the zipWriter by adding entries from heatMap.zipFiles."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Cancelled by user",
+          "description": "The process is rejected if the progressMeter indicates to stop."
+        }
+      ],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves with the zipWriter once all entries have been added."
+      }
+    },
+    {
+      "name": "addEntry",
+      "namespace": "None",
+      "signature": "addEntry(fileIndex)",
+      "description": "Adds an entry to a zip file based on the provided file index. It updates the progress meter and handles different types of entries (binary, mapConfig, and text).",
+      "parameters": [
+        {
+          "name": "fileIndex",
+          "type": "number",
+          "description": "The index of the file to be added to the zip."
+        }
+      ],
+      "side_effects": [
+        "Updates the progress meter.",
+        "May reject the promise if the operation is cancelled by the user.",
+        "Resolves the promise when all files are added."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "Cancelled by user",
+          "description": "The operation is stopped if the user cancels it via the progress meter."
+        }
+      ],
+      "returns": {
+        "type": "Promise",
+        "description": "Resolves with the zipWriter when all entries are added."
+      }
+    },
+    {
+      "name": "zipCopyText",
+      "namespace": "None",
+      "signature": "zipCopyText(entry)",
+      "description": "This function returns a promise to copy the text from a zip entry to a new zip file.",
+      "parameters": [
+        {
+          "name": "entry",
+          "type": "ZipEntry",
+          "description": "The zip entry object from which text data is to be extracted."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves to the result of adding the text contents to a new zip file."
+      }
+    },
+    {
+      "name": "zipCopyBin",
+      "namespace": "None",
+      "signature": "zipCopyBin(entry)",
+      "description": "This function copies a binary zip entry to a new zip file. It returns a promise that resolves when the binary data has been successfully copied.",
+      "parameters": [
+        {
+          "name": "entry",
+          "type": "ZipEntry",
+          "description": "The zip entry object that contains the binary data to be copied."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves to the result of the addBinContents function, which handles the binary data."
+      }
+    },
+    {
+      "name": "addTextContents",
+      "namespace": "None",
+      "signature": "addTextContents(name, contents)",
+      "description": "Adds text contents to a zip file using the zipWriter object and returns a promise.",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "The name of the file to be added to the zip."
+        },
+        {
+          "name": "contents",
+          "type": "string",
+          "description": "The text contents to be added to the file in the zip."
+        }
+      ],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves when the text contents have been added to the zip file."
+      }
+    },
+    {
+      "name": "addBinContents",
+      "namespace": "None",
+      "signature": "addBinContents(name, contents)",
+      "description": "Adds binary contents to a zip file and returns a promise.",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "String",
+          "description": "The name of the file to be added to the zip."
+        },
+        {
+          "name": "contents",
+          "type": "Blob",
+          "description": "The binary contents to be added to the zip file."
+        }
+      ],
+      "returns": {
+        "type": "Promise",
+        "description": "A promise that resolves when the binary contents are successfully added to the zip file."
+      }
+    },
+    {
+      "name": "webSaveMapProperties",
+      "namespace": "None",
+      "signature": "webSaveMapProperties(heatMap)",
+      "description": "Saves the properties of a heat map by sending a POST request with the map configuration to a specified server endpoint.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "An object representing the heat map whose properties are to be saved."
+        }
+      ],
+      "called_urls": [
+        "CFG.api + 'SaveMapProperties?map=' + heatMap.mapName"
+      ],
+      "side_effects": [
+        "Sends a POST request to save the heat map properties.",
+        "Modifies the 'success' variable based on the server response."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "req.status",
+          "description": "Logs an error message if the server response status is not 200."
+        }
+      ],
+      "returns": {
+        "type": "String",
+        "description": "The response from the server if the request is successful, otherwise 'false'."
+      }
+    },
+    {
+      "name": "onreadystatechange",
+      "namespace": "None",
+      "signature": "req.onreadystatechange()",
+      "description": "Handles the state change of an XMLHttpRequest object, checking if the request is complete and updating the success variable based on the response status.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the global variable 'success' based on the response status of the XMLHttpRequest."
+      ],
+      "error_handling": [
+        {
+          "errorCode": "req.status != 200",
+          "description": "Logs an error message to the console and sets 'success' to 'false' if the request status is not 200."
+        }
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "zipMapProperties",
+      "namespace": "None",
+      "signature": "zipMapProperties(heatMap, jsonData)",
+      "description": "This function sends a POST request to a specified API endpoint to zip map properties based on the provided heatMap and jsonData.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "An object representing the heat map, which includes a mapName property."
+        },
+        {
+          "name": "jsonData",
+          "type": "object",
+          "description": "An object containing the data to be sent in the POST request."
+        }
+      ],
+      "called_urls": [
+        "CFG.api + \"ZippedMap?map=\" + heatMap.mapName"
+      ],
+      "side_effects": [
+        "Sends a POST request to the specified API endpoint."
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "Always returns true."
+      }
+    },
+    {
+      "name": "getMapStatus",
+      "namespace": "None",
+      "signature": "getMapStatus(heatMap)",
+      "defined_section": "Matrix Manager block",
+      "description": "Retrieves the status of a given heat map from the mapStatusDB. If the status does not exist, it initializes a new status object with default values and stores it in the mapStatusDB.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "String",
+          "description": "The identifier for the heat map whose status is being retrieved."
+        }
+      ],
+      "side_effects": [
+        "If the status for the given heat map does not exist, a new status object is created and stored in the mapStatusDB."
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "An object representing the status of the heat map, containing properties 'mapUpdatedOnLoad' and 'flickInitialized'."
+      }
+    },
+    {
+      "name": "addMapData",
+      "namespace": "None",
+      "signature": "addMapData(heatMap, md)",
+      "description": "Adds map data to the heatMap object and updates the map status if the data is compatible. It also triggers a callback event.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "The heatMap object to which the map data will be added."
+        },
+        {
+          "name": "md",
+          "type": "object",
+          "description": "The map data to be added to the heatMap object."
+        }
+      ],
+      "side_effects": [
+        "Modifies the mapData property of the heatMap object.",
+        "Updates the map status if the map data is compatible.",
+        "Triggers a callback event MMGR.Event_JSON."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "addMapConfig",
+      "namespace": "None",
+      "signature": "addMapConfig(heatMap, mc)",
+      "description": "Configures the map with the provided configuration object, updates the map status, adds data layers, configures flick settings, and sends a callback event.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "The heatMap object to be configured."
+        },
+        {
+          "name": "mc",
+          "type": "object",
+          "description": "The map configuration object."
+        }
+      ],
+      "side_effects": [
+        "Updates the map status to indicate it was updated on load.",
+        "Modifies the heatMap object by setting its mapConfig property.",
+        "Adds data layers to the heatMap.",
+        "Configures flick settings for the heatMap.",
+        "Sends a callback event using heatMap.sendCallBack."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "mapUpdatedOnLoad",
+      "namespace": "MMGR",
+      "signature": "MMGR.mapUpdatedOnLoad(heatMap)",
+      "description": "Checks if the map was updated on load based on the provided heatMap object.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "object",
+          "description": "The heatMap object containing the map data and status information."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "boolean",
+        "description": "Returns true if the map was updated on load, otherwise false."
+      }
+    },
+    {
+      "name": "createHeatMap",
+      "namespace": "MMGR",
+      "signature": "MMGR.createHeatMap(fileSrc, heatMapName, updateCallbacks, mapFile)",
+      "description": "Main function of the matrix manager to retrieve a heat map object. This function initializes a new HeatMap object with the provided parameters.",
+      "parameters": [
+        {
+          "name": "fileSrc",
+          "type": "String",
+          "description": "The source of the file to be used for the heat map."
+        },
+        {
+          "name": "heatMapName",
+          "type": "String",
+          "description": "The name of the heat map."
+        },
+        {
+          "name": "updateCallbacks",
+          "type": "Array",
+          "description": "An array of callback functions to be executed when the heat map is updated."
+        },
+        {
+          "name": "mapFile",
+          "type": "String",
+          "description": "The map file used for local file-based heat maps."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "HeatMap",
+        "description": "A new HeatMap object initialized with the provided parameters."
+      }
+    },
+    {
+      "name": "getHeatMap",
+      "namespace": "MMGR",
+      "signature": "MMGR.getHeatMap()",
+      "description": "Returns the current heat map.",
+      "parameters": [],
+      "returns": {
+        "type": "heatMap",
+        "description": "The current heat map object."
+      }
+    },
+    {
+      "name": "configureFlick",
+      "namespace": "None",
+      "signature": "configureFlick(heatMap)",
+      "description": "Sets up the 'flick' control and data layer for the provided heatMap object. It initializes the flick control if it hasn't been initialized yet and configures the data layers accordingly.",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "The heatMap object that contains data layers and panel configuration."
+        }
+      ],
+      "side_effects": [
+        "Modifies the flickInitialized property of the heatMap's status.",
+        "Sets the current data layer of the heatMap.",
+        "Enables or disables flicks using the FLICK object."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "Does not return a value."
+      }
+    },
+    {
+      "name": "configurePageHeader",
+      "namespace": "None",
+      "signature": "configurePageHeader(heatMap)",
+      "description": "Configures elements of the page header and top bar based on the loaded NGCHM (Next Generation Clustered Heat Map).",
+      "parameters": [
+        {
+          "name": "heatMap",
+          "type": "HeatMap",
+          "description": "An instance of the HeatMap class containing information about the loaded heat map."
+        }
+      ],
+      "called_urls": [],
+      "side_effects": [
+        "Sets the document title if the heat map source is not local.",
+        "Updates the inner HTML of the element with id 'mapName' to the name of the heat map."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}

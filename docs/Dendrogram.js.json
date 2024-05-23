@@ -1,0 +1,404 @@
+{
+  "filename": "Dendrogram.js",
+  "namespace": "NgChm.DDR",
+  "description": [
+    "This module defines and manages dendrograms for the NgChm application. It includes functionality for creating, configuring, and drawing dendrograms on a canvas. The dendrograms can be either row or column-oriented and are used to represent hierarchical data structures."
+  ],
+  "declares_functions_in": [
+    "DDR"
+  ],
+  "interacts_with": [
+    "NgChm.MAPREP",
+    "NgChm.MMGR"
+  ],
+  "classes": [],
+  "member_variables": [
+    {
+      "name": "DDR.maxDendroHeight",
+      "description": "Maximum height for the dendrogram."
+    },
+    {
+      "name": "DDR.minDendroHeight",
+      "description": "Minimum height for the dendrogram."
+    },
+    {
+      "name": "DDR.minDendroWidth",
+      "description": "Minimum width for the dendrogram."
+    }
+  ],
+  "global_variables": [],
+  "exports": [],
+  "functions": [
+    {
+      "name": "Dendrogram",
+      "namespace": "DDR",
+      "signature": "DDR.Dendrogram(canvas)",
+      "description": "This function initializes a dendrogram on a given canvas. It sets up the properties and methods necessary for rendering and interacting with the dendrogram, including methods for calculating dimensions, detecting hits on dendrogram bars, and drawing the dendrogram.",
+      "parameters": [
+        {
+          "name": "canvas",
+          "type": "HTMLCanvasElement",
+          "description": "The canvas element on which the dendrogram will be drawn."
+        }
+      ],
+      "side_effects": [
+        "Sets the width and height of the canvas element.",
+        "Modifies the internal state of the dendrogram object."
+      ],
+      "returns": {
+        "type": "DDR.Dendrogram",
+        "description": "An instance of the DDR.Dendrogram class."
+      }
+    },
+    {
+      "name": "getDivWidth",
+      "namespace": "None",
+      "signature": "getDivWidth()",
+      "description": "Calculates and returns the width of a div element, adjusted by padding height if the axis is 'Row'.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The width of the div element, adjusted by padding height if applicable."
+      }
+    },
+    {
+      "name": "getDivHeight",
+      "namespace": "None",
+      "signature": "getDivHeight()",
+      "description": "Returns the height of the dendrogram canvas, including additional padding if the axis is set to 'Column'.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The height of the dendrogram canvas with optional padding."
+      }
+    },
+    {
+      "name": "getConfigSize",
+      "namespace": "None",
+      "signature": "getConfigSize()",
+      "description": "Returns the proportion of the heat map element to use for the dendrogram. The proportion is calculated based on the height of the dendrogram configuration and a minimum dendrogram height.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "number",
+        "description": "The proportion of the heat map element to use for the dendrogram. A value of 100 corresponds to 20%."
+      }
+    },
+    {
+      "name": "checkDendroHit",
+      "namespace": "None",
+      "signature": "checkDendroHit(y, x, onhit)",
+      "description": "Determines if the coordinates (y, x) are close to any of the bars in the dendrogram. If a bar is found to be close, the onhit callback is called with the index of the closest bar.",
+      "parameters": [
+        {
+          "name": "y",
+          "type": "number",
+          "description": "The y-coordinate in application level coordinates."
+        },
+        {
+          "name": "x",
+          "type": "number",
+          "description": "The x-coordinate in application level coordinates."
+        },
+        {
+          "name": "onhit",
+          "type": "function",
+          "description": "Callback function to be called with the index of the closest bar if a hit is detected."
+        }
+      ],
+      "side_effects": [
+        "Modifies the bestDist, bestIdx, and bestWhere variables to track the closest bar."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "No return value."
+      }
+    },
+    {
+      "name": "check",
+      "namespace": "None",
+      "signature": "check(where, dh, dv, globalBarIdx, idx)",
+      "description": "Evaluates the distance between two points and updates the best distance and corresponding index if the current distance is smaller than the previously recorded best distance.",
+      "parameters": [
+        {
+          "name": "where",
+          "type": "any",
+          "description": "An identifier or object representing the location being checked."
+        },
+        {
+          "name": "dh",
+          "type": "number",
+          "description": "The horizontal distance component."
+        },
+        {
+          "name": "dv",
+          "type": "number",
+          "description": "The vertical distance component."
+        },
+        {
+          "name": "globalBarIdx",
+          "type": "number",
+          "description": "The global index of the bar being checked."
+        },
+        {
+          "name": "idx",
+          "type": "number",
+          "description": "The local index of the bar being checked."
+        }
+      ],
+      "side_effects": [
+        "Updates the global variable bestDist with the smallest distance found.",
+        "Updates the global variable bestIdx with the local index corresponding to the smallest distance.",
+        "Updates the global variable bestWhere with the location corresponding to the smallest distance."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "setCanvasSize",
+      "namespace": "None",
+      "signature": "setCanvasSize(width, height)",
+      "description": "Sets the width and height of the dendroCanvas element.",
+      "parameters": [
+        {
+          "name": "width",
+          "type": "number",
+          "description": "The desired width of the canvas."
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "description": "The desired height of the canvas."
+        }
+      ],
+      "side_effects": [
+        "Modifies the width and height properties of the dendroCanvas element."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawView",
+      "namespace": "None",
+      "signature": "drawView()",
+      "description": "Draws the dendrogram into the canvas. This function ensures that the drawing operation is debounced to avoid redundant executions.",
+      "parameters": [],
+      "side_effects": [
+        "Sets a timeout for debounced drawing.",
+        "Resets the timeout to null after drawing."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "ColumnDendrogram",
+      "namespace": "DDR",
+      "signature": "DDR.ColumnDendrogram()",
+      "description": "Defines properties and methods specific to column dendrograms, which are oriented to match the width and height of the canvas. This class includes methods for converting canvas event positions to unit coordinates, drawing the dendrogram on a PDF, and debounced drawing on a canvas.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the canvas context by drawing dendrogram bars.",
+        "Logs debug information to the console if debug mode is enabled."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "None",
+        "description": "This constructor function does not return a value."
+      }
+    },
+    {
+      "name": "canvasEventPosn",
+      "namespace": "None",
+      "signature": "canvasEventPosn(e)",
+      "description": "Calculates the relative position of a mouse event on a canvas element and returns the coordinates as an object.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The mouse event object containing information about the event."
+        }
+      ],
+      "side_effects": [
+        "Logs the calculated coordinates to the console if the debug flag is set to true."
+      ],
+      "returns": {
+        "type": "Object",
+        "description": "An object containing the relative width (w) and height (h) coordinates of the mouse event on the canvas."
+      }
+    },
+    {
+      "name": "drawPDF",
+      "namespace": "None",
+      "signature": "drawPDF(jsdoc, vp)",
+      "description": "Draws the dendrogram inside the specified viewport of the jsdoc. The function scales the drawing space and draws bars representing the dendrogram within the viewport.",
+      "parameters": [
+        {
+          "name": "jsdoc",
+          "type": "object",
+          "description": "The jsdoc object used for drawing, which includes methods for setting drawing properties and a 2D context for rendering."
+        },
+        {
+          "name": "vp",
+          "type": "object",
+          "description": "The viewport object defining the area where the dendrogram will be drawn. It includes properties like height, width, left, and top."
+        }
+      ],
+      "side_effects": [
+        "Modifies the 2D context of the jsdoc object to draw the dendrogram."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawBar",
+      "namespace": "None",
+      "signature": "function drawBar(bar)",
+      "description": "Draws a bar on a canvas based on the provided bar object, converting unit coordinates to device coordinates and ensuring the bar is within the viewport.",
+      "parameters": [
+        {
+          "name": "bar",
+          "type": "object",
+          "description": "An object containing the properties of the bar to be drawn, including left, right, height, leftBot, and rightBot."
+        }
+      ],
+      "side_effects": [
+        "Draws lines on a canvas context (ctx).",
+        "Logs debug information to the console if the debug flag is set."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "debouncedDraw",
+      "namespace": "None",
+      "signature": "debouncedDraw()",
+      "description": "This function is responsible for drawing a dendrogram on a canvas element. It translates unit coordinates to canvas coordinates and draws bars representing the dendrogram structure. The function ensures that the drawing is efficient by grouping bars of the same type together.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Modifies the canvas element by drawing on it."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "RowDendrogram",
+      "namespace": "DDR",
+      "signature": "DDR.RowDendrogram()",
+      "description": "Defines properties and methods specific to row dendrograms, which are rotated 90 degrees from their natural orientation. The width of the dendrogram corresponds to the height of the canvas, and the height corresponds to the width of the canvas.",
+      "parameters": [],
+      "side_effects": [
+        "Modifies the canvas by drawing the dendrogram.",
+        "Logs debug information to the console if debug mode is enabled."
+      ],
+      "returns": {
+        "type": "DDR.RowDendrogram",
+        "description": "An instance of the RowDendrogram class with methods to handle drawing and event position conversion."
+      }
+    },
+    {
+      "name": "canvasEventPosn",
+      "namespace": "None",
+      "signature": "canvasEventPosn(e)",
+      "description": "Calculates the relative position of an event on a canvas element and returns the coordinates as an object.",
+      "parameters": [
+        {
+          "name": "e",
+          "type": "Event",
+          "description": "The event object containing details about the event."
+        }
+      ],
+      "side_effects": [],
+      "error_handling": [],
+      "returns": {
+        "type": "Object",
+        "description": "An object containing the relative width (w) and height (h) coordinates of the event on the canvas."
+      }
+    },
+    {
+      "name": "drawPDF",
+      "namespace": "None",
+      "signature": "drawPDF(jsdoc, vp)",
+      "description": "Draws the dendrogram within the specified viewport (vp) using the jsdoc context.",
+      "parameters": [
+        {
+          "name": "jsdoc",
+          "type": "object",
+          "description": "The jsPDF document object used for drawing."
+        },
+        {
+          "name": "vp",
+          "type": "object",
+          "description": "The viewport object containing the dimensions and position for drawing."
+        }
+      ],
+      "side_effects": [
+        "Modifies the jsdoc context by drawing on it."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "drawBar",
+      "namespace": "None",
+      "signature": "drawBar(v)",
+      "description": "Draws a bar on a canvas context based on the provided dimensions and positions. The function calculates the positions and dimensions of the bar and its edges, then draws them if they are within the viewport.",
+      "parameters": [
+        {
+          "name": "v",
+          "type": "object",
+          "description": "An object containing the properties left, right, height, leftBot, and rightBot, which define the dimensions and positions of the bar."
+        }
+      ],
+      "side_effects": [
+        "Draws lines on the canvas context (ctx).",
+        "Logs debug information to the console if the debug flag is set."
+      ],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    },
+    {
+      "name": "debouncedDraw",
+      "namespace": "None",
+      "signature": "debouncedDraw()",
+      "description": "Draws the dendrogram into the canvas, rotating by 90 degrees. This function should not be called directly; use drawView on the base Dendrogram class.",
+      "parameters": [],
+      "called_urls": [],
+      "side_effects": [
+        "Logs debug information if debug mode is enabled.",
+        "Modifies the canvas by drawing the dendrogram."
+      ],
+      "error_handling": [],
+      "returns": {
+        "type": "void",
+        "description": "This function does not return a value."
+      }
+    }
+  ]
+}
